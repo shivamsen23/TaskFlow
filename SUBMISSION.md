@@ -40,7 +40,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | 4 | A task lifecycle with rules | Done | Server-enforced state machine, BLOCKED exact state restoration via previousStatus, blocking dependency completion validation, reopening |
 | 5 | Assignment | Partial | Project member assignment constraint, multi-assignees, unassign on member removal, history tracking, "Assigned to Me" query |
 | 6 | Finding things | Done | PostgreSQL server-side title/description search, project/status/assignee/priority/overdue filters, sorting, and pagination |
-| 7 | | | |
+| 7 | Acting on many tasks at once | Done | Multi-task bulk status/assignee/due-date actions with partial success and per-task error reporting; server-side filtered CSV export |
 | 8 | | | |
 | 9 | | | |
 | 10 | | | |

@@ -6,12 +6,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node src/tests/auth.test.js && node src/tests/projects.test.js && node src/tests/tasks.test.js && node src/tests/lifecycle.test.js && node src/tests/search-filter.test.js",
+    "test": "node src/tests/auth.test.js && node src/tests/projects.test.js && node src/tests/tasks.test.js && node src/tests/lifecycle.test.js && node src/tests/search-filter.test.js && node src/tests/bulk-csv.test.js",
     "test:auth": "node src/tests/auth.test.js",
     "test:projects": "node src/tests/projects.test.js",
     "test:tasks": "node src/tests/tasks.test.js",
     "test:lifecycle": "node src/tests/lifecycle.test.js",
-    "test:search": "node src/tests/search-filter.test.js"
+    "test:search": "node src/tests/search-filter.test.js",
+    "test:bulk": "node src/tests/bulk-csv.test.js"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

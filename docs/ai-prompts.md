@@ -447,3 +447,50 @@ Add backend tests for combinations of filters.
 
 ### What you corrected
 - Configured case-insensitive search (`mode: 'insensitive'`) over title and description combined via Prisma `OR`.
+
+---
+
+## Phase 8 — Bulk Task Operations and CSV Export
+
+### Prompt
+
+```text
+PHASE 8 — BULK TASK OPERATIONS AND CSV EXPORT
+
+Implement Goal 7.
+
+Bulk operations:
+1. change status
+2. change assignees
+3. change due date
+
+Process tasks independently to support partial success.
+If one task is invalid:
+- valid tasks succeed and commit
+- invalid task is rejected
+- response returns per-task result and error explanation
+
+Reuse existing task service and business rules; record TaskHistory for each successful task.
+
+CSV export:
+- GET /api/tasks/export/csv
+- Respect all active query filters (search, project, status, assignee, priority, overdue, sorting)
+- Server-side generation
+
+Frontend:
+- Selection checkboxes
+- Sticky bulk action toolbar
+- Bulk results modal/banner
+- Export CSV button
+
+Add backend tests for partial success.
+```
+
+### What you got
+- `bulkUpdateTasks` in `server/src/modules/tasks/tasks.service.js` and `POST /api/tasks/bulk` implementing independent per-task processing with partial success.
+- `exportTasksCsv` in `server/src/modules/tasks/tasks.service.js` and `GET /api/tasks/export/csv` streaming RFC-compliant CSVs matching active server-side filters.
+- React `TasksPage` updated with multi-select checkboxes, floating bulk action bar, detailed per-task outcome dialog, and one-click CSV export button.
+- Comprehensive automated test suite (`server/src/tests/bulk-csv.test.js`) with 6 test cases verifying partial success isolation, audit logging, and filtered CSV content (52 total backend tests passing).
+
+### What you corrected
+- Centralized `buildTasksWhereAndOrderBy` helper in `tasks.service.js` so `GET /api/tasks` and `GET /api/tasks/export/csv` share identical filtering and sorting logic.

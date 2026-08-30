@@ -46,6 +46,26 @@ async function updateTaskStatus(req, res, next) {
   }
 }
 
+async function bulkUpdateTasks(req, res, next) {
+  try {
+    const result = await tasksService.bulkUpdateTasks(req.user, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function exportTasksCsv(req, res, next) {
+  try {
+    const csvContent = await tasksService.exportTasksCsv(req.user, req.query);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="tasks-export.csv"');
+    res.status(200).send(csvContent);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function deleteTask(req, res, next) {
   try {
     const result = await tasksService.deleteTask(req.params.id, req.user);
@@ -61,5 +81,7 @@ module.exports = {
   createTask,
   updateTask,
   updateTaskStatus,
+  bulkUpdateTasks,
+  exportTasksCsv,
   deleteTask
 };

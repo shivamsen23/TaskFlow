@@ -30,6 +30,15 @@ export default function TasksPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
+  // Multi-select & Bulk Actions
+  const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState('status'); // 'status', 'assignees', 'dueDate'
+  const [bulkStatus, setBulkStatus] = useState('IN_PROGRESS');
+  const [bulkAssigneeIds, setBulkAssigneeIds] = useState([]);
+  const [bulkDueDate, setBulkDueDate] = useState('');
+  const [isBulkExecuting, setIsBulkExecuting] = useState(false);
+  const [bulkResults, setBulkResults] = useState(null); // { results: [], summary: {} }
+
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -76,6 +85,8 @@ export default function TasksPage() {
       if (resData.pagination) {
         setPagination(resData.pagination);
       }
+      // Clean selected tasks that are no longer in visible list
+      setSelectedTaskIds(new Set());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -99,7 +110,6 @@ export default function TasksPage() {
     sortOrder
   ]);
 
-  // Handle Search submit / debounce reset to page 1
   function handleSearchSubmit(e) {
     e.preventDefault();
     setPage(1);
@@ -109,6 +119,84 @@ export default function TasksPage() {
   function handleFilterChange(setter, value) {
     setter(value);
     setPage(1);
+  }
+
+  // Selection handlers
+  function toggleSelectAllVisible() {
+    if (selectedTaskIds.size === tasks.length && tasks.length > 0) {
+      setSelectedTaskIds(new Set());
+    } else {
+      setSelectedTaskIds(new Set(tasks.map((t) => t.id)));
+    }
+  }
+
+  function toggleSelectTask(id) {
+    const next = new Set(selectedTaskIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedTaskIds(next);
+  }
+
+  // CSV Export Handler
+  function handleExportCsv() {
+    const params = new URLSearchParams();
+    params.set('sortBy', sortBy);
+    params.set('sortOrder', sortOrder);
+
+    if (search.trim()) params.set('search', search.trim());
+    if (selectedProject) params.set('project', selectedProject);
+    if (selectedStatus) params.set('status', selectedStatus);
+    if (selectedPriority) params.set('priority', selectedPriority);
+    if (selectedAssignee) params.set('assignee', selectedAssignee);
+    if (isOverdueOnly) params.set('overdue', 'true');
+    if (assignedToMeOnly) params.set('assignedToMe', 'true');
+
+    window.open(`/api/tasks/export/csv?${params.toString()}`, '_blank');
+  }
+
+  // Bulk Action Execution Handler
+  async function handleExecuteBulkAction() {
+    if (selectedTaskIds.size === 0) return;
+
+    setIsBulkExecuting(true);
+    setBulkResults(null);
+
+    const payload = {
+      taskIds: Array.from(selectedTaskIds),
+      action: bulkAction
+    };
+
+    if (bulkAction === 'status') {
+      payload.status = bulkStatus;
+    } else if (bulkAction === 'assignees') {
+      payload.assigneeIds = bulkAssigneeIds;
+    } else if (bulkAction === 'dueDate') {
+      payload.dueDate = bulkDueDate ? new Date(bulkDueDate).toISOString() : null;
+    }
+
+    try {
+      const res = await fetch('/api/tasks/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Bulk operation failed');
+      }
+
+      setBulkResults(data);
+      await loadTasks();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsBulkExecuting(false);
+    }
   }
 
   async function handleSaveTask(payload, taskId) {
@@ -174,6 +262,7 @@ export default function TasksPage() {
 
   const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
+  const isAllVisibleSelected = tasks.length > 0 && selectedTaskIds.size === tasks.length;
 
   return (
     <div>
@@ -191,32 +280,53 @@ export default function TasksPage() {
             Tasks
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', marginTop: '2px' }}>
-            Server-side search, filtering, and sorting across active project portfolios.
+            Server-side search, filtering, bulk actions, and CSV export.
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingTask(null);
-            setIsModalOpen(true);
-          }}
-          style={{
-            background: '#2563eb',
-            color: '#ffffff',
-            border: 'none',
-            padding: '10px 18px',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-          }}
-        >
-          <span>+</span> New Task
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleExportCsv}
+            style={{
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              color: '#334155',
+              padding: '9px 16px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>📥</span> Export CSV
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setIsModalOpen(true);
+            }}
+            style={{
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              padding: '9px 18px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+            }}
+          >
+            <span>+</span> New Task
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Panel */}
@@ -404,7 +514,7 @@ export default function TasksPage() {
           </label>
         </div>
 
-        {/* Row 3: Sorting Options */}
+        {/* Row 3: Sorting & Counter */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '10px', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Sort by:</span>
@@ -450,6 +560,212 @@ export default function TasksPage() {
         </div>
       </div>
 
+      {/* Bulk Results Summary Modal / Banner */}
+      {bulkResults && (
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          borderRadius: '10px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
+                Bulk Action Results: {bulkResults.summary.successful} succeeded, {bulkResults.summary.failed} rejected
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748b' }}>
+                Each task was processed independently according to business rules.
+              </p>
+            </div>
+            <button
+              onClick={() => setBulkResults(null)}
+              style={{ background: 'none', border: 'none', fontSize: '18px', color: '#64748b', cursor: 'pointer' }}
+            >
+              ×
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+            {bulkResults.results.map((r, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  background: r.success ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${r.success ? '#bbf7d0' : '#fecaca'}`
+                }}
+              >
+                <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                  {r.title}
+                </div>
+                <div>
+                  {r.success ? (
+                    <span style={{ color: '#166534', fontWeight: 600 }}>✓ Success</span>
+                  ) : (
+                    <span style={{ color: '#b91c1c', fontWeight: 500 }}>
+                      ✗ Rejected: {r.reason}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Action Bar */}
+      {selectedTaskIds.size > 0 && (
+        <div style={{
+          background: '#0f172a',
+          color: '#ffffff',
+          padding: '14px 20px',
+          borderRadius: '10px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '14px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{
+              background: '#2563eb',
+              color: '#ffffff',
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              fontSize: '12px',
+              fontWeight: 700
+            }}>
+              {selectedTaskIds.size} selected
+            </span>
+
+            <select
+              value={bulkAction}
+              onChange={(e) => setBulkAction(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid #334155',
+                background: '#1e293b',
+                color: '#ffffff',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            >
+              <option value="status">Change Status</option>
+              <option value="assignees">Change Assignees</option>
+              <option value="dueDate">Change Due Date</option>
+            </select>
+
+            {/* Action Dynamic Inputs */}
+            {bulkAction === 'status' && (
+              <select
+                value={bulkStatus}
+                onChange={(e) => setBulkStatus(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #334155',
+                  background: '#1e293b',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+              >
+                <option value="BACKLOG">BACKLOG</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="IN_REVIEW">IN_REVIEW</option>
+                <option value="BLOCKED">BLOCKED</option>
+                <option value="DONE">DONE</option>
+              </select>
+            )}
+
+            {bulkAction === 'assignees' && (
+              <select
+                value={bulkAssigneeIds[0] || ''}
+                onChange={(e) => setBulkAssigneeIds(e.target.value ? [e.target.value] : [])}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #334155',
+                  background: '#1e293b',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+              >
+                <option value="">Unassign All</option>
+                {usersList.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    Assign to {u.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {bulkAction === 'dueDate' && (
+              <input
+                type="date"
+                value={bulkDueDate}
+                onChange={(e) => setBulkDueDate(e.target.value)}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #334155',
+                  background: '#1e293b',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+              />
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={handleExecuteBulkAction}
+              disabled={isBulkExecuting}
+              style={{
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                padding: '7px 16px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: isBulkExecuting ? 'not-allowed' : 'pointer',
+                opacity: isBulkExecuting ? 0.6 : 1
+              }}
+            >
+              {isBulkExecuting ? 'Applying...' : `Apply to ${selectedTaskIds.size} Tasks`}
+            </button>
+
+            <button
+              onClick={() => setSelectedTaskIds(new Set())}
+              style={{
+                background: 'transparent',
+                border: '1px solid #475569',
+                color: '#cbd5e1',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div style={{
           background: '#fef2f2',
@@ -489,7 +805,15 @@ export default function TasksPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '12px 20px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '12px 14px', width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
+                <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Task Title & Project
                 </th>
                 <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -514,10 +838,25 @@ export default function TasksPage() {
                 const pColor = getPriorityColor(t.priority);
                 const sColor = getStatusColor(t.status);
                 const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE';
+                const isSelected = selectedTaskIds.has(t.id);
 
                 return (
-                  <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 20px' }}>
+                  <tr
+                    key={t.id}
+                    style={{
+                      borderBottom: '1px solid #f1f5f9',
+                      background: isSelected ? '#f8fafc' : 'transparent'
+                    }}
+                  >
+                    <td style={{ padding: '14px 14px', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectTask(t.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{
                           background: '#f1f5f9',

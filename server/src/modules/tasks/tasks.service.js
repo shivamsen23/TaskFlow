@@ -1,10 +1,12 @@
 const prisma = require('../../prisma');
 const taskRulesService = require('./task-rules.service');
 
-async function getTasks(user, query = {}) {
+/**
+ * Shared helper to build Prisma `where` and `orderBy` clauses
+ * for task queries, ensuring strict member authorization and filter consistency.
+ */
+async function buildTasksWhereAndOrderBy(user, query = {}) {
   const {
-    page = 1,
-    limit = 10,
     search,
     project,
     projectId,
@@ -30,7 +32,6 @@ async function getTasks(user, query = {}) {
 
   // 1. Project Filter & Authorization
   if (targetProject) {
-    // Look up project by ID or Key
     const projRecord = await prisma.project.findFirst({
       where: {
         OR: [{ id: targetProject }, { key: targetProject.toUpperCase() }]
@@ -116,7 +117,6 @@ async function getTasks(user, query = {}) {
   let orderByClause = { createdAt: 'desc' };
 
   if (sortBy === 'dueDate') {
-    // Put null due dates last when ascending, first when descending
     orderByClause = { dueDate: orderDirection };
   } else if (sortBy === 'priority') {
     orderByClause = { priority: orderDirection };
@@ -128,20 +128,25 @@ async function getTasks(user, query = {}) {
     orderByClause = { title: orderDirection };
   }
 
-  // 8. Pagination Calculations
+  return { where, orderBy: orderByClause };
+}
+
+async function getTasks(user, query = {}) {
+  const { page = 1, limit = 10 } = query;
+  const { where, orderBy } = await buildTasksWhereAndOrderBy(user, query);
+
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
   const skip = (pageNum - 1) * limitNum;
   const take = limitNum;
 
-  // 9. Execute Prisma count and query concurrently
   const [total, tasks] = await Promise.all([
     prisma.task.count({ where }),
     prisma.task.findMany({
       where,
       skip,
       take,
-      orderBy: orderByClause,
+      orderBy,
       include: {
         project: {
           select: { id: true, key: true, name: true }
@@ -183,7 +188,7 @@ async function getTasks(user, query = {}) {
 
   return {
     data: tasksWithLegal,
-    tasks: tasksWithLegal, // Backward-compatible alias
+    tasks: tasksWithLegal,
     pagination: {
       page: pageNum,
       limit: limitNum,
@@ -305,7 +310,6 @@ async function createTask(data, creatorUser) {
     throw error;
   }
 
-  // 1. Verify project exists
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: { members: true }
@@ -316,7 +320,6 @@ async function createTask(data, creatorUser) {
     throw error;
   }
 
-  // 2. Role check for creator
   if (creatorUser.role !== 'MANAGER') {
     const isMember = project.members.some((m) => m.userId === creatorUser.id);
     if (!isMember) {
@@ -326,7 +329,6 @@ async function createTask(data, creatorUser) {
     }
   }
 
-  // 3. Verify all assignees are project members
   const projectMemberUserIds = new Set(project.members.map((m) => m.userId));
   for (const assigneeId of assigneeIds) {
     if (!projectMemberUserIds.has(assigneeId)) {
@@ -336,7 +338,6 @@ async function createTask(data, creatorUser) {
     }
   }
 
-  // 4. Verify all blocking tasks belong to the same project
   if (blockingTaskIds.length > 0) {
     const blockingTasks = await prisma.task.findMany({
       where: {
@@ -360,7 +361,6 @@ async function createTask(data, creatorUser) {
     }
   }
 
-  // 5. Execute creation inside transaction
   const createdTaskId = await prisma.$transaction(async (tx) => {
     const task = await tx.task.create({
       data: {
@@ -375,7 +375,6 @@ async function createTask(data, creatorUser) {
       }
     });
 
-    // Record creation history
     await tx.taskHistory.create({
       data: {
         taskId: task.id,
@@ -387,7 +386,6 @@ async function createTask(data, creatorUser) {
       }
     });
 
-    // Assign initial assignees & record history
     if (assigneeIds.length > 0) {
       const usersToAssign = await tx.user.findMany({
         where: { id: { in: assigneeIds } },
@@ -415,7 +413,6 @@ async function createTask(data, creatorUser) {
       }
     }
 
-    // Link dependencies
     if (blockingTaskIds.length > 0) {
       for (const blockingId of blockingTaskIds) {
         await tx.taskDependency.create({
@@ -446,12 +443,10 @@ async function updateTask(taskId, data, user) {
 
   const existingTask = await getTaskById(taskId, user);
 
-  // Validate status transition rules if status is changing
   if (status !== undefined && status !== existingTask.status) {
     await taskRulesService.validateStatusTransition(existingTask, status);
   }
 
-  // Validate assignees if provided
   if (assigneeIds !== undefined) {
     const project = await prisma.project.findUnique({
       where: { id: existingTask.projectId },
@@ -468,7 +463,6 @@ async function updateTask(taskId, data, user) {
     }
   }
 
-  // Validate blocking dependencies if provided
   if (blockingTaskIds !== undefined) {
     if (blockingTaskIds.includes(taskId)) {
       const error = new Error('A task cannot depend on or block itself');
@@ -503,7 +497,6 @@ async function updateTask(taskId, data, user) {
   await prisma.$transaction(async (tx) => {
     const updatePayload = {};
 
-    // Track field history changes
     if (title !== undefined && title.trim() !== existingTask.title) {
       updatePayload.title = title.trim();
       await tx.taskHistory.create({
@@ -549,7 +542,6 @@ async function updateTask(taskId, data, user) {
     if (status !== undefined && status !== existingTask.status) {
       updatePayload.status = status;
 
-      // Manage previousStatus for BLOCKED state transitions
       if (status === 'BLOCKED') {
         updatePayload.previousStatus = existingTask.status;
       } else if (existingTask.status === 'BLOCKED') {
@@ -586,7 +578,6 @@ async function updateTask(taskId, data, user) {
       }
     }
 
-    // Apply task scalar field updates
     if (Object.keys(updatePayload).length > 0) {
       await tx.task.update({
         where: { id: taskId },
@@ -594,13 +585,11 @@ async function updateTask(taskId, data, user) {
       });
     }
 
-    // Handle Assignees delta
     if (assigneeIds !== undefined) {
       const currentAssigneeMap = new Map(existingTask.assignees.map((a) => [a.userId, a.user.name]));
       const currentIds = new Set(currentAssigneeMap.keys());
       const newIds = new Set(assigneeIds);
 
-      // Identify unassigned
       for (const [currId, currName] of currentAssigneeMap.entries()) {
         if (!newIds.has(currId)) {
           await tx.taskAssignee.delete({
@@ -622,7 +611,6 @@ async function updateTask(taskId, data, user) {
         }
       }
 
-      // Identify newly assigned
       for (const newId of newIds) {
         if (!currentIds.has(newId)) {
           const u = await tx.user.findUnique({
@@ -648,7 +636,6 @@ async function updateTask(taskId, data, user) {
       }
     }
 
-    // Handle Dependencies delta
     if (blockingTaskIds !== undefined) {
       await tx.taskDependency.deleteMany({
         where: { taskId }
@@ -674,8 +661,149 @@ async function updateTaskStatus(taskId, status, user) {
   return updateTask(taskId, { status }, user);
 }
 
+/**
+ * Bulk updates a list of tasks with partial success support.
+ * Each task is processed independently so failures do not roll back successful updates.
+ */
+async function bulkUpdateTasks(user, body) {
+  const { taskIds, action, status, assigneeIds, dueDate } = body;
+
+  if (!Array.isArray(taskIds) || taskIds.length === 0) {
+    const error = new Error('taskIds must be a non-empty array');
+    error.status = 400;
+    throw error;
+  }
+
+  if (!action) {
+    const error = new Error('action is required (status, assignees, or dueDate)');
+    error.status = 400;
+    throw error;
+  }
+
+  const results = [];
+
+  for (const taskId of taskIds) {
+    let taskRecord = null;
+    try {
+      taskRecord = await getTaskById(taskId, user);
+
+      let payload = {};
+      if (action === 'status') {
+        if (!status) throw new Error('status value is required for status action');
+        payload = { status };
+      } else if (action === 'assignees') {
+        payload = { assigneeIds: assigneeIds || [] };
+      } else if (action === 'dueDate') {
+        payload = { dueDate: dueDate || null };
+      } else {
+        throw new Error(`Unsupported bulk action: ${action}`);
+      }
+
+      await updateTask(taskId, payload, user);
+
+      results.push({
+        taskId,
+        title: taskRecord.title,
+        success: true
+      });
+    } catch (err) {
+      results.push({
+        taskId,
+        title: taskRecord ? taskRecord.title : taskId,
+        success: false,
+        reason: err.message
+      });
+    }
+  }
+
+  const successful = results.filter((r) => r.success).length;
+  const failed = results.filter((r) => !r.success).length;
+
+  return {
+    results,
+    summary: {
+      total: taskIds.length,
+      successful,
+      failed
+    }
+  };
+}
+
+function escapeCsvField(val) {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Generates a CSV export string for the filtered task query.
+ */
+async function exportTasksCsv(user, query = {}) {
+  const { where, orderBy } = await buildTasksWhereAndOrderBy(user, query);
+
+  const tasks = await prisma.task.findMany({
+    where,
+    orderBy,
+    take: 10000,
+    include: {
+      project: {
+        select: { id: true, key: true, name: true }
+      },
+      creator: {
+        select: { id: true, name: true, email: true }
+      },
+      assignees: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      }
+    }
+  });
+
+  const headers = [
+    'Task ID',
+    'Project Key',
+    'Project Name',
+    'Title',
+    'Description',
+    'Priority',
+    'Status',
+    'Due Date',
+    'Assignees',
+    'Created By',
+    'Created At',
+    'Updated At'
+  ];
+
+  const rows = tasks.map((t) => [
+    escapeCsvField(t.id),
+    escapeCsvField(t.project?.key),
+    escapeCsvField(t.project?.name),
+    escapeCsvField(t.title),
+    escapeCsvField(t.description || ''),
+    escapeCsvField(t.priority),
+    escapeCsvField(t.status),
+    escapeCsvField(t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : ''),
+    escapeCsvField(t.assignees.map((a) => a.user.name).join('; ')),
+    escapeCsvField(t.creator?.name || ''),
+    escapeCsvField(new Date(t.createdAt).toISOString()),
+    escapeCsvField(new Date(t.updatedAt).toISOString())
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map((row) => row.join(','))
+  ].join('\r\n');
+
+  return csvContent;
+}
+
 async function deleteTask(taskId, user) {
-  // Enforce manager-only task deletion (Requirement 1 & Goal 3)
   if (user.role !== 'MANAGER') {
     const error = new Error('Access denied: Only managers can delete tasks');
     error.status = 403;
@@ -692,13 +820,11 @@ async function deleteTask(taskId, user) {
   }
 
   return prisma.$transaction(async (tx) => {
-    // Soft delete
     await tx.task.update({
       where: { id: taskId },
       data: { deletedAt: new Date() }
     });
 
-    // Record deletion event in history
     await tx.taskHistory.create({
       data: {
         taskId,
@@ -720,5 +846,7 @@ module.exports = {
   createTask,
   updateTask,
   updateTaskStatus,
+  bulkUpdateTasks,
+  exportTasksCsv,
   deleteTask
 };

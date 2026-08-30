@@ -113,3 +113,9 @@
 - **Chose:** Full server-side query processing using PostgreSQL `WHERE`, `ORDER BY`, `LIMIT`, and `OFFSET` via Prisma parameterized queries.
 - **Rejected:** Loading the entire task database into React state and filtering/sorting with JavaScript array functions.
 - **Why:** Goal 6 specifically mandates: *"All of this must be done by the server — do not load every task into the browser and filter there."* Server-side filtering scales to tens of thousands of records, respects strict data isolation per role, and minimizes network payload sizes.
+
+## Decision 20: Bulk Task Partial Success Isolation & Server CSV Streaming
+
+- **Chose:** Processing bulk task mutations in independent per-task operations returning detailed per-task `{ taskId, title, success, reason }` status reports, coupled with server-side filtered CSV generation.
+- **Rejected:** Executing the entire bulk batch in a single atomic transaction that rolls back on any single task violation, or building CSV files inside the React client.
+- **Why:** Goal 7 explicitly requires: *"Because some of those changes will be illegal for some tasks, the result must report per task what succeeded and what was rejected and why — not just fail the whole batch."* Independent execution guarantees that valid tasks are saved while invalid tasks are clearly explained.
