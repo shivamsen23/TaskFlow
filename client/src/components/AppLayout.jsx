@@ -33,6 +33,9 @@ export default function AppLayout() {
             <Link to="/projects" style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>
               Projects
             </Link>
+            <Link to="/tasks" style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>
+              Tasks
+            </Link>
           </nav>
         </div>
 

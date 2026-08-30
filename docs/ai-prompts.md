@@ -287,3 +287,60 @@ Add tests for:
 ### What you corrected
 - Protected project owners from accidental self-removal from their own projects unless ownership is explicitly transferred.
 - Ensured default project list query cleanly filters out archived projects while allowing managers to filter and restore archived projects with a single click.
+
+---
+
+## Phase 5 — Tasks and Assignments
+
+### Prompt
+
+```text
+PHASE 5 — TASKS AND ASSIGNMENTS
+
+Implement Goal 3 and task assignment functionality from Goal 5.
+
+Implement:
+Task CRUD.
+
+Every task:
+- belongs to exactly one project
+- has title
+- description
+- priority
+- optional due date
+- status
+- one or more optional assignees
+- blocking task dependencies
+
+Only project members can be assigned.
+Managers can delete tasks.
+Members cannot delete tasks.
+
+Create: tasks routes, tasks controller, tasks service.
+Support: POST /api/tasks, GET /api/tasks/:id, PUT /api/tasks/:id, DELETE /api/tasks/:id, GET /api/tasks.
+
+When task assignees change:
+- record assignment/unassignment in history
+
+Frontend: Tasks page, Project task list, Create/Edit Task modal, Task Details page, Assignee selector, Priority selector, Due date, Dependency selector following docs/ui-reference.png.
+
+Add tests for:
+- task must belong to project
+- non-member cannot be assigned (400)
+- multiple assignees work
+- member cannot delete task (403)
+- manager can delete task (soft delete)
+- dependency must be same project
+- assignment changes create history
+```
+
+### What you got
+- Tasks module (`server/src/modules/tasks/`) with `tasks.routes.js`, `tasks.controller.js`, `tasks.service.js`.
+- Strict server-side validation: tasks must belong to a valid project; assignees must be members of that project; dependencies must be intra-project.
+- Soft deletion implementation via `deletedAt DateTime?`, restricted to Managers, logging `DELETED` in `TaskHistory`.
+- Atomic `prisma.$transaction` tracking field updates, assignee additions (`ASSIGNED`), and removals (`UNASSIGNED`) with audit records.
+- React frontend pages and components (`TasksPage`, `TaskDetailsPage`, `TaskModal`, updated `ProjectDetailsPage` and `AppLayout`) styled per `docs/ui-reference.png`.
+- Automated backend test suite (`server/src/tests/tasks.test.js`) passing 7 comprehensive test cases (22 total tests across the system).
+
+### What you corrected
+- Refactored `prisma.$transaction` in task creation and update methods to ensure full database commits prior to fetching populated relation graphs.

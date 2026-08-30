@@ -34,31 +34,38 @@ The work is planned across incremental, verifiable phases:
 - Created React `ProjectsPage`, `ProjectDetailsPage`, `ProjectModal`, and `AddMemberModal` styled per `docs/ui-reference.png`
 - Added comprehensive automated backend test suite with 100% pass rate
 
-### Phase 5: Tasks, Lifecycle State Machine & Dependencies (Upcoming)
-- Task CRUD within projects (title, description, priority, due date, assignees, dependencies)
-- Task lifecycle state machine (`Backlog → In Progress → In Review → Done`, `Blocked` from `In Progress`/`In Review`, and returning to `previousStatus` on unblock)
-- Server-side dependency validation (intra-project constraint, blocking tasks must be `DONE` before dependent moves to `DONE`)
+### Phase 5: Tasks, Assignments & Dependencies (Completed)
+- Implemented `POST /api/tasks`, `GET /api/tasks`, `GET /api/tasks/:id`, `PUT /api/tasks/:id`, `DELETE /api/tasks/:id`
+- Enforced project member assignment constraint (server rejects non-member assignments with 400)
+- Enforced intra-project dependency rule (server rejects cross-project blocking dependencies with 400)
+- Enforced manager-only task deletion with soft delete (`deletedAt`) and `TaskHistory` audit entry
+- Implemented atomic assignee change tracking with `ASSIGNED` and `UNASSIGNED` `TaskHistory` entries
+- Created React `TasksPage`, `TaskDetailsPage`, `TaskModal`, and updated `ProjectDetailsPage` with real task tables
+- Added comprehensive automated backend test suite with 100% pass rate
 
-### Phase 6: Search, Filtering, Bulk Actions, History & Comments (Upcoming)
-- Cross-project task search/filtering/sorting/pagination
-- Multi-task bulk operations with individual per-task success/failure reporting
-- Immutable timeline history and comment posting
-- CSV export of filtered task lists
+### Phase 6: Lifecycle State Machine, Dependencies Rules & Comments (Upcoming)
+- Task lifecycle transitions (`BACKLOG → IN_PROGRESS → IN_REVIEW → DONE`)
+- Blocking rules (only `IN_PROGRESS` and `IN_REVIEW` can become `BLOCKED`, unblocking returns to `previousStatus`)
+- Dependency completion validation (cannot move to `DONE` while active blocking dependencies exist)
+- Comment posting on task details with immutable history logs
 
-### Phase 7: Dashboard, Overdue Alerts & Polish (Upcoming)
-- Dashboard KPI cards, completion trends, and status breakdowns
-- Overdue alerts with navbar badge count and due-date invalidation logic
+### Phase 7: Search, Filtering, Bulk Actions, Reports & CSV Export (Upcoming)
+- Advanced multi-criteria search, sorting, pagination, and bulk status updates
+- CSV export of filtered task sets
+- Workload and task distribution reports
+
+### Phase 8: Dashboard, Overdue Alerts & Final Polish (Upcoming)
+- Dashboard KPI metrics, status breakdowns, and upcoming deadlines
+- Overdue alerts system with navbar badge counter and dynamic invalidation
 
 ---
 
 ## Build Order Rationale
-Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, and Phase 4 implemented project workspaces and team membership. This provides the project boundary and membership foundation necessary to implement task management, lifecycle transitions, and assignment rules in Phase 5.
+Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, Phase 4 established project boundaries, and Phase 5 implemented core task CRUD, multi-assignment, and dependency validation. This sets up Phase 6 to implement the complete task lifecycle state machine, blocking rules, and comments.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
 - **Phase 2 (Database Schema & Seed):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 3 (Authentication & Roles):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 4 (Projects & Membership):** Estimated ~1.5h, Actual ~1.0h.
-
-## Scope Adjustments
-- Strictly focused Phase 4 on Goal 2 (Projects) and the project-membership aspect of Goal 5 (task unassignment on removal) without implementing full task CRUD yet.
+- **Phase 5 (Tasks & Assignments):** Estimated ~1.5h, Actual ~1.0h.

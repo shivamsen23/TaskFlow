@@ -1,0 +1,55 @@
+const tasksService = require('./tasks.service');
+
+async function getTasks(req, res, next) {
+  try {
+    const { projectId, assignedToMe } = req.query;
+    const tasks = await tasksService.getTasks(req.user, { projectId, assignedToMe });
+    res.status(200).json({ tasks });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getTaskById(req, res, next) {
+  try {
+    const task = await tasksService.getTaskById(req.params.id, req.user);
+    res.status(200).json({ task });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createTask(req, res, next) {
+  try {
+    const task = await tasksService.createTask(req.body, req.user);
+    res.status(201).json({ task });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateTask(req, res, next) {
+  try {
+    const task = await tasksService.updateTask(req.params.id, req.body, req.user);
+    res.status(200).json({ task });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteTask(req, res, next) {
+  try {
+    const result = await tasksService.deleteTask(req.params.id, req.user);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  getTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask
+};

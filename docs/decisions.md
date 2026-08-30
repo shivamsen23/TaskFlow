@@ -89,3 +89,15 @@
 - **Chose:** Atomic Prisma transaction (`prisma.$transaction`) that deletes `ProjectMember`, finds all active tasks assigned to the user in that project, removes `TaskAssignee` records, and creates individual `TaskHistory` unassignment entries.
 - **Rejected:** Leaving orphan task assignees or running multiple non-transactional queries.
 - **Why:** Goal 5 mandates that removing a user from a project unassigns them from that project's tasks, while Goal 9 requires immutable history tracking. An atomic database transaction guarantees relational consistency and ensures audit records are never skipped.
+
+## Decision 16: Server-Side Assignee Membership & Intra-Project Dependency Validation
+
+- **Chose:** Strict server-side verification that assignees belong to `ProjectMember` and blocking tasks belong to the exact same `projectId`.
+- **Rejected:** Trusting frontend dropdown filters or allowing cross-project task blocking.
+- **Why:** Requirement 3 and Requirement 5 state that only project members may be assigned to project tasks and dependencies are strictly intra-project. Backend validation guarantees data integrity against malformed API requests.
+
+## Decision 17: Task Soft Deletion with Manager Authorization
+
+- **Chose:** Soft deletion via `deletedAt = new Date()` protected by `requireManager` middleware and logging a `DELETED` entry in `TaskHistory`.
+- **Rejected:** Hard SQL DELETE or allowing Members to delete tasks.
+- **Why:** Requirement 1 explicitly restricts task deletion to Managers, and Requirement 9 mandates immutable history. Soft deletion keeps all timeline logs and related audit records intact while hiding the task from all active views.

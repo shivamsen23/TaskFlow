@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ProjectModal from '../components/ProjectModal';
 import AddMemberModal from '../components/AddMemberModal';
+import TaskModal from '../components/TaskModal';
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
@@ -10,22 +11,34 @@ export default function ProjectDetailsPage() {
   const { user, isManager } = useAuth();
 
   const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
-  async function loadProject() {
+  async function loadProjectAndTasks() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/projects/${id}`, { credentials: 'include' });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to load project');
+      const [projRes, tasksRes] = await Promise.all([
+        fetch(`/api/projects/${id}`, { credentials: 'include' }),
+        fetch(`/api/tasks?projectId=${id}`, { credentials: 'include' })
+      ]);
+
+      const projData = await projRes.json();
+      if (!projRes.ok) {
+        throw new Error(projData.error || 'Failed to load project');
       }
-      setProject(data.project);
+      setProject(projData.project);
+
+      const tasksData = await tasksRes.json();
+      if (tasksRes.ok) {
+        setTasks(tasksData.tasks || []);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,7 +47,7 @@ export default function ProjectDetailsPage() {
   }
 
   useEffect(() => {
-    loadProject();
+    loadProjectAndTasks();
   }, [id]);
 
   async function handleEditProject(payload) {
@@ -50,7 +63,7 @@ export default function ProjectDetailsPage() {
       throw new Error(data.error || 'Failed to update project');
     }
 
-    await loadProject();
+    await loadProjectAndTasks();
   }
 
   async function handleToggleArchive() {
@@ -71,7 +84,7 @@ export default function ProjectDetailsPage() {
       if (!res.ok) {
         throw new Error(data.error || `Failed to ${action} project`);
       }
-      await loadProject();
+      await loadProjectAndTasks();
     } catch (err) {
       alert(err.message);
     }
@@ -90,7 +103,7 @@ export default function ProjectDetailsPage() {
       throw new Error(data.error || 'Failed to add member');
     }
 
-    await loadProject();
+    await loadProjectAndTasks();
   }
 
   async function handleRemoveMember(targetMember) {
@@ -111,9 +124,70 @@ export default function ProjectDetailsPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Failed to remove member');
       }
-      await loadProject();
+      await loadProjectAndTasks();
     } catch (err) {
       alert(err.message);
+    }
+  }
+
+  async function handleSaveTask(payload, taskId) {
+    const isEdit = !!taskId;
+    const url = isEdit ? `/api/tasks/${taskId}` : '/api/tasks';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to save task');
+    }
+
+    await loadProjectAndTasks();
+  }
+
+  async function handleDeleteTask(taskId, taskTitle) {
+    if (!window.confirm(`Are you sure you want to delete task "${taskTitle}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete task');
+      }
+      await loadProjectAndTasks();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function getPriorityColor(priority) {
+    switch (priority) {
+      case 'URGENT': return { bg: '#fee2e2', text: '#991b1b' };
+      case 'HIGH': return { bg: '#ffedd5', text: '#9a3412' };
+      case 'MEDIUM': return { bg: '#fef3c7', text: '#92400e' };
+      case 'LOW':
+      default: return { bg: '#f1f5f9', text: '#475569' };
+    }
+  }
+
+  function getStatusColor(status) {
+    switch (status) {
+      case 'DONE': return { bg: '#dcfce7', text: '#166534' };
+      case 'IN_PROGRESS': return { bg: '#dbeafe', text: '#1e40af' };
+      case 'IN_REVIEW': return { bg: '#f3e8ff', text: '#6b21a8' };
+      case 'BLOCKED': return { bg: '#fee2e2', text: '#991b1b' };
+      case 'BACKLOG':
+      default: return { bg: '#f1f5f9', text: '#475569' };
     }
   }
 
@@ -213,7 +287,7 @@ export default function ProjectDetailsPage() {
               <strong>Created:</strong> <span style={{ color: '#0f172a' }}>{new Date(project.createdAt).toLocaleDateString()}</span>
             </div>
             <div>
-              <strong>Total Tasks:</strong> <span style={{ color: '#0f172a' }}>{project._count?.tasks || 0}</span>
+              <strong>Total Tasks:</strong> <span style={{ color: '#0f172a' }}>{tasks.length}</span>
             </div>
           </div>
         </div>
@@ -390,21 +464,221 @@ export default function ProjectDetailsPage() {
         </table>
       </div>
 
-      {/* Task System Notice (Phase 5) */}
+      {/* Project Tasks Card */}
       <div style={{
-        background: '#f8fafc',
-        padding: '24px',
+        background: '#ffffff',
         borderRadius: '12px',
-        border: '1px dashed #cbd5e1',
-        textAlign: 'center',
-        color: '#64748b'
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        overflow: 'hidden',
+        marginBottom: '24px'
       }}>
-        <p style={{ fontWeight: 600, fontSize: '15px', color: '#334155' }}>
-          Tasks & Lifecycle Kanban Board
-        </p>
-        <p style={{ fontSize: '13px', marginTop: '4px' }}>
-          This project currently holds {project._count?.tasks || 0} tasks. Full task management, lifecycle transitions, and dependency graphs will be initialized in subsequent phases.
-        </p>
+        <div style={{
+          padding: '18px 24px',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
+              Project Tasks ({tasks.length})
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+              Tasks belonging to this project workspace.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setIsTaskModalOpen(true);
+            }}
+            style={{
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              padding: '8px 14px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            + New Task
+          </button>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <p style={{ fontSize: '15px', fontWeight: 600, color: '#334155' }}>
+              No tasks in this project yet
+            </p>
+            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+              Click "+ New Task" above to create the first task in this workspace.
+            </p>
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '12px 24px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Title
+                </th>
+                <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Priority
+                </th>
+                <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Status
+                </th>
+                <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Due Date
+                </th>
+                <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Assignees
+                </th>
+                <th style={{ padding: '12px 24px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map((t) => {
+                const pColor = getPriorityColor(t.priority);
+                const sColor = getStatusColor(t.status);
+                const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE';
+
+                return (
+                  <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 24px' }}>
+                      <Link
+                        to={`/tasks/${t.id}`}
+                        style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px', textDecoration: 'none' }}
+                        onMouseOver={(e) => (e.currentTarget.style.color = '#2563eb')}
+                        onMouseOut={(e) => (e.currentTarget.style.color = '#1e293b')}
+                      >
+                        {t.title}
+                      </Link>
+                      {t.description && (
+                        <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px', maxWidth: '340px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {t.description}
+                        </p>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: pColor.bg,
+                        color: pColor.text,
+                        letterSpacing: '0.05em'
+                      }}>
+                        {t.priority}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: sColor.bg,
+                        color: sColor.text,
+                        letterSpacing: '0.05em'
+                      }}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 16px', fontSize: '13px' }}>
+                      {t.dueDate ? (
+                        <span style={{ color: isOverdue ? '#dc2626' : '#475569', fontWeight: isOverdue ? 600 : 400 }}>
+                          {new Date(t.dueDate).toLocaleDateString()}
+                          {isOverdue && ' (Overdue)'}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      {t.assignees && t.assignees.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {t.assignees.map((a) => (
+                            <span
+                              key={a.userId}
+                              style={{
+                                background: '#eff6ff',
+                                color: '#1e40af',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 500
+                              }}
+                            >
+                              {a.user.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '13px', fontStyle: 'italic' }}>Unassigned</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 24px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <Link
+                          to={`/tasks/${t.id}`}
+                          style={{
+                            fontSize: '13px',
+                            color: '#2563eb',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            background: '#eff6ff'
+                          }}
+                        >
+                          View
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setEditingTask(t);
+                            setIsTaskModalOpen(true);
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #cbd5e1',
+                            color: '#334155',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit
+                        </button>
+                        {isManager && (
+                          <button
+                            onClick={() => handleDeleteTask(t.id, t.title)}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid #fca5a5',
+                              color: '#dc2626',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <ProjectModal
@@ -419,6 +693,14 @@ export default function ProjectDetailsPage() {
         onClose={() => setIsAddMemberModalOpen(false)}
         onAddMember={handleAddMember}
         currentMemberIds={project.members?.map((m) => m.userId) || []}
+      />
+
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSave={handleSaveTask}
+        task={editingTask}
+        initialProjectId={project.id}
       />
     </div>
   );
