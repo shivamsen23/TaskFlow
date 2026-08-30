@@ -39,7 +39,7 @@ async function runTests() {
     const managerLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'sarah.chen@busyinfotech.com', password: 'Password123!' })
+      body: JSON.stringify({ email: 'shivam.sen@busyinfotech.com', password: 'Password123!' })
     });
     const managerCookie = managerLoginRes.headers.get('set-cookie');
     const managerToken = managerCookie?.match(/token=([^;]+)/)[1];
@@ -183,7 +183,7 @@ async function runTests() {
     // 8. Test Member Add & Remove with Task Unassignment & History Tracking
     // First, find user David Kim and add him to Apollo project
     const davidUser = await prisma.user.findUnique({
-      where: { email: 'david.kim@busyinfotech.com' }
+      where: { email: 'arjun.mehta@busyinfotech.com' }
     });
     const apolloProject = await prisma.project.findUnique({
       where: { key: 'APOLLO' }

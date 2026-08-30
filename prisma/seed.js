@@ -25,8 +25,8 @@ async function main() {
   console.log('--- Seeding Users ---');
   const sarah = await prisma.user.create({
     data: {
-      name: 'Sarah Chen',
-      email: 'sarah.chen@busyinfotech.com',
+      name: 'Shivam Sen',
+      email: 'shivam.sen@busyinfotech.com',
       passwordHash: DEFAULT_PASSWORD_HASH,
       role: 'MANAGER',
     },
@@ -34,8 +34,8 @@ async function main() {
 
   const alex = await prisma.user.create({
     data: {
-      name: 'Alex Kumar',
-      email: 'alex.kumar@busyinfotech.com',
+      name: 'Rahul Sharma',
+      email: 'rahul.sharma@busyinfotech.com',
       passwordHash: DEFAULT_PASSWORD_HASH,
       role: 'MANAGER',
     },
@@ -70,8 +70,8 @@ async function main() {
 
   const david = await prisma.user.create({
     data: {
-      name: 'David Kim',
-      email: 'david.kim@busyinfotech.com',
+      name: 'Arjun Mehta',
+      email: 'arjun.mehta@busyinfotech.com',
       passwordHash: DEFAULT_PASSWORD_HASH,
       role: 'MEMBER',
     },

@@ -39,7 +39,7 @@ async function runTests() {
     const managerLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'sarah.chen@busyinfotech.com', password: 'Password123!' })
+      body: JSON.stringify({ email: 'shivam.sen@busyinfotech.com', password: 'Password123!' })
     });
     const managerCookie = managerLoginRes.headers.get('set-cookie');
     const managerToken = managerCookie?.match(/token=([^;]+)/)[1];

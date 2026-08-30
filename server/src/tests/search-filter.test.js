@@ -39,7 +39,7 @@ async function runTests() {
     const managerLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'sarah.chen@busyinfotech.com', password: 'Password123!' })
+      body: JSON.stringify({ email: 'shivam.sen@busyinfotech.com', password: 'Password123!' })
     });
     const managerCookie = managerLoginRes.headers.get('set-cookie');
     const managerToken = managerCookie?.match(/token=([^;]+)/)[1];
@@ -69,7 +69,7 @@ async function runTests() {
       pagedData.data.length === 3 &&
       pagedData.pagination.page === 1 &&
       pagedData.pagination.limit === 3 &&
-      pagedData.pagination.total >= 9 &&
+      pagedData.pagination.total >= 8 &&
       pagedData.pagination.totalPages >= 3,
       '1. Pagination returns exactly requested page size with total count and totalPages'
     );

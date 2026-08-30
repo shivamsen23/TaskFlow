@@ -41,9 +41,9 @@ export default function LoginPage() {
   }
 
   const demoUsers = [
-    { name: 'Sarah Chen', email: 'sarah.chen@busyinfotech.com', role: 'MANAGER', note: 'All Projects' },
+    { name: 'Shivam Sen', email: 'shivam.sen@busyinfotech.com', role: 'MANAGER', note: 'All Projects' },
     { name: 'Elena Rostova', email: 'elena.rostova@busyinfotech.com', role: 'MEMBER', note: 'Apollo & Titan' },
-    { name: 'David Kim', email: 'david.kim@busyinfotech.com', role: 'MEMBER', note: 'Nexus' }
+    { name: 'Arjun Mehta', email: 'arjun.mehta@busyinfotech.com', role: 'MEMBER', note: 'Nexus' }
   ];
 
   return (

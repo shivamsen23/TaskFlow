@@ -42,7 +42,7 @@ async function runTests() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'sarah.chen@busyinfotech.com',
+        email: 'shivam.sen@busyinfotech.com',
         password: 'Password123!'
       })
     });
@@ -67,7 +67,7 @@ async function runTests() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'sarah.chen@busyinfotech.com',
+        email: 'shivam.sen@busyinfotech.com',
         password: 'WrongPassword!'
       })
     });
@@ -143,7 +143,7 @@ async function runTests() {
     assert(
       meRes.status === 200 &&
       meData.user &&
-      meData.user.email === 'sarah.chen@busyinfotech.com',
+      meData.user.email === 'shivam.sen@busyinfotech.com',
       '6. GET /api/auth/me returns current authenticated user profile'
     );
 

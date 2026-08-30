@@ -35,11 +35,11 @@ async function runTests() {
   }
 
   try {
-    // Authenticate Sarah (Manager - member of Apollo & Titan)
+    // Authenticate Shivam (Manager - member of Apollo & Titan)
     const managerLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'sarah.chen@busyinfotech.com', password: 'Password123!' })
+      body: JSON.stringify({ email: 'shivam.sen@busyinfotech.com', password: 'Password123!' })
     });
     const managerCookie = managerLoginRes.headers.get('set-cookie');
     const managerToken = managerCookie?.match(/token=([^;]+)/)[1];
@@ -60,7 +60,7 @@ async function runTests() {
     // Users
     const elena = await prisma.user.findUnique({ where: { email: 'elena.rostova@busyinfotech.com' } });
     const marcus = await prisma.user.findUnique({ where: { email: 'marcus.johnson@busyinfotech.com' } });
-    const david = await prisma.user.findUnique({ where: { email: 'david.kim@busyinfotech.com' } }); // Nexus member, NOT Apollo
+    const arjun = await prisma.user.findUnique({ where: { email: 'arjun.mehta@busyinfotech.com' } }); // Nexus member, NOT Apollo
 
     // 1. Task must belong to project (creation fails without projectId)
     const noProjectRes = await fetch(`${baseUrl}/api/tasks`, {
@@ -91,7 +91,7 @@ async function runTests() {
       body: JSON.stringify({
         projectId: apollo.id,
         title: 'Apollo Security Review',
-        assigneeIds: [david.id] // David is not in Apollo
+        assigneeIds: [arjun.id] // Arjun is not in Apollo
       })
     });
     const invalidAssigneeData = await invalidAssigneeRes.json();
