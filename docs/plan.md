@@ -10,9 +10,13 @@ The work is planned across incremental, verifiable phases:
 - Frontend setup (React + Vite, React Router, basic layout, placeholder routes)
 - Base directory structure and package configurations
 
-### Phase 2: Database Schema & Migrations (Upcoming)
-- PostgreSQL database design with Prisma schema
-- Models, relations, indexes, and initial migrations
+### Phase 2: Database Schema & Migrations (Completed)
+- Designed full PostgreSQL relational schema covering User, Project, ProjectMember, Task, TaskAssignee, TaskDependency, TaskHistory, Comment, and AlertDismissal
+- Configured Prisma models, enums (`Role`, `Priority`, `Status`), indexes, unique constraints, and foreign key cascades
+- Supported `previousStatus` on Task for state machine restoration
+- Created and executed initial database migration (`20260830073054_init`)
+- Created realistic seed script (`prisma/seed.js`) populating managers, members, active/archived projects, tasks, dependencies, history, comments, and alerts
+- Verified database constraints and alert invalidation logic
 
 ### Phase 3: Authentication & Authorization (Upcoming)
 - JWT-based authentication, password hashing with bcrypt
@@ -32,10 +36,11 @@ The work is planned across incremental, verifiable phases:
 ---
 
 ## Build Order Rationale
-Phase 1 focuses entirely on standing up a lean, robust skeleton for both client and server before adding any business logic or persistence layer. This ensures environment consistency, clean boundaries, and verified communication between client and server upfront.
+Phase 1 set up the baseline infrastructure. Phase 2 established the complete, normalized PostgreSQL schema with Prisma so all subsequent phases (Auth, Projects, Tasks, Lifecycle, History, Alerts) build directly upon verified, type-safe database models without rework.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
+- **Phase 2 (Database Schema & Seed):** Estimated ~1.0h, Actual ~0.75h.
 
 ## Scope Adjustments
-- Strictly kept Phase 1 free of business logic, premature database schema, and mock data as per specification.
+- Strictly limited Phase 2 to database modeling, migrations, seed data, and constraint verification without premature API or UI logic.

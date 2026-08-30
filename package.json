@@ -8,6 +8,19 @@
     "dev:client": "npm --prefix client run dev",
     "start:server": "npm --prefix server start",
     "build:client": "npm --prefix client run build",
-    "install:all": "npm --prefix server install && npm --prefix client install"
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "node prisma/seed.js",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.4.1"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   }
 }
