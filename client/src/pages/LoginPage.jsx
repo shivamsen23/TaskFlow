@@ -79,13 +79,13 @@ export default function LoginPage() {
             margin: '0 auto 12px',
             boxShadow: '0 4px 6px rgba(37,99,235,0.3)'
           }}>
-            B
+            T
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em' }}>
-            BUSY Task Manager
+            TaskFlow
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-            Sign in to access your projects and tasks
+            Project & Task Management
           </p>
         </div>
 

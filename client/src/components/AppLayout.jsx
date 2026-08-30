@@ -80,14 +80,14 @@ export default function AppLayout() {
             color: '#ffffff',
             boxShadow: '0 2px 4px rgba(37,99,235,0.4)'
           }}>
-            B
+            T
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '15px', color: '#ffffff', letterSpacing: '-0.02em' }}>
-              BUSY Tasks
+              TaskFlow
             </div>
             <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
-              Workforce Portfolio
+              Project & Task Management
             </div>
           </div>
         </div>
