@@ -37,6 +37,16 @@ async function updateTask(req, res, next) {
   }
 }
 
+async function updateTaskStatus(req, res, next) {
+  try {
+    const { status } = req.body;
+    const task = await tasksService.updateTaskStatus(req.params.id, status, req.user);
+    res.status(200).json({ task, message: `Task status updated to ${status}` });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function deleteTask(req, res, next) {
   try {
     const result = await tasksService.deleteTask(req.params.id, req.user);
@@ -51,5 +61,6 @@ module.exports = {
   getTaskById,
   createTask,
   updateTask,
+  updateTaskStatus,
   deleteTask
 };

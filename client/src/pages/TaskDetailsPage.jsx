@@ -11,6 +11,8 @@ export default function TaskDetailsPage() {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [transitionError, setTransitionError] = useState('');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -34,6 +36,30 @@ export default function TaskDetailsPage() {
   useEffect(() => {
     loadTask();
   }, [id]);
+
+  async function handleStatusTransition(targetStatus) {
+    setTransitionError('');
+    setIsTransitioning(true);
+    try {
+      const res = await fetch(`/api/tasks/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: targetStatus })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to transition to ${targetStatus}`);
+      }
+
+      await loadTask();
+    } catch (err) {
+      setTransitionError(err.message);
+    } finally {
+      setIsTransitioning(false);
+    }
+  }
 
   async function handleEditTask(payload) {
     const res = await fetch(`/api/tasks/${id}`, {
@@ -89,6 +115,43 @@ export default function TaskDetailsPage() {
       case 'BLOCKED': return { bg: '#fee2e2', text: '#991b1b' };
       case 'BACKLOG':
       default: return { bg: '#f1f5f9', text: '#475569' };
+    }
+  }
+
+  function getTransitionButtonLabel(targetStatus, currentStatus, previousStatus) {
+    if (currentStatus === 'BLOCKED') {
+      return `Unblock Task (to ${targetStatus})`;
+    }
+    if (currentStatus === 'DONE') {
+      return `Reopen Task (to ${targetStatus})`;
+    }
+    if (targetStatus === 'IN_PROGRESS') {
+      return 'Start Work → IN_PROGRESS';
+    }
+    if (targetStatus === 'IN_REVIEW') {
+      return 'Request Review → IN_REVIEW';
+    }
+    if (targetStatus === 'DONE') {
+      return 'Complete Task → DONE';
+    }
+    if (targetStatus === 'BLOCKED') {
+      return 'Mark as BLOCKED';
+    }
+    return `Move to ${targetStatus}`;
+  }
+
+  function getTransitionButtonStyle(targetStatus) {
+    switch (targetStatus) {
+      case 'DONE':
+        return { background: '#16a34a', color: '#ffffff' };
+      case 'IN_PROGRESS':
+        return { background: '#2563eb', color: '#ffffff' };
+      case 'IN_REVIEW':
+        return { background: '#7c3aed', color: '#ffffff' };
+      case 'BLOCKED':
+        return { background: '#dc2626', color: '#ffffff' };
+      default:
+        return { background: '#475569', color: '#ffffff' };
     }
   }
 
@@ -162,6 +225,31 @@ export default function TaskDetailsPage() {
         </Link>
       </div>
 
+      {/* Transition Error Alert */}
+      {transitionError && (
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#b91c1c',
+          padding: '14px 18px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <strong>Status Transition Blocked:</strong> {transitionError}
+          </div>
+          <button
+            onClick={() => setTransitionError('')}
+            style={{ background: 'none', border: 'none', color: '#b91c1c', fontSize: '16px', cursor: 'pointer' }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Task Header */}
       <div style={{
         background: '#ffffff',
@@ -211,11 +299,52 @@ export default function TaskDetailsPage() {
             }}>
               {task.status}
             </span>
+            {task.previousStatus && (
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                (Blocked from {task.previousStatus})
+              </span>
+            )}
           </div>
 
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em' }}>
             {task.title}
           </h1>
+
+          {/* Legal Status Transition Actions */}
+          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Workflow Actions:
+            </span>
+            {task.legalNextStatuses && task.legalNextStatuses.length > 0 ? (
+              task.legalNextStatuses.map((nextSt) => {
+                const btnStyle = getTransitionButtonStyle(nextSt);
+                return (
+                  <button
+                    key={nextSt}
+                    onClick={() => handleStatusTransition(nextSt)}
+                    disabled={isTransitioning}
+                    style={{
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: isTransitioning ? 'not-allowed' : 'pointer',
+                      opacity: isTransitioning ? 0.6 : 1,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      ...btnStyle
+                    }}
+                  >
+                    {getTransitionButtonLabel(nextSt, task.status, task.previousStatus)}
+                  </button>
+                );
+              })
+            ) : (
+              <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
+                No further transitions available.
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>

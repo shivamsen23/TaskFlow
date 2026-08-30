@@ -37,7 +37,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | 1 | Accounts and roles | Done | JWT via HttpOnly cookies, bcrypt hashing, server-enforced role authorization middleware |
 | 2 | Projects | Done | Manager CRUD, key, owner, archive/restore without data destruction, member isolation |
 | 3 | Tasks inside projects | Done | Project-scoped task CRUD, priority, due dates, dependencies, assignees, manager soft deletion |
-| 4 | | | |
+| 4 | A task lifecycle with rules | Done | Server-enforced state machine, BLOCKED exact state restoration via previousStatus, blocking dependency completion validation, reopening |
 | 5 | Assignment | Partial | Project member assignment constraint, multi-assignees, unassign on member removal, history tracking, "Assigned to Me" query |
 | 6 | | | |
 | 7 | | | |

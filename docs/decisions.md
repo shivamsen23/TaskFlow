@@ -101,3 +101,9 @@
 - **Chose:** Soft deletion via `deletedAt = new Date()` protected by `requireManager` middleware and logging a `DELETED` entry in `TaskHistory`.
 - **Rejected:** Hard SQL DELETE or allowing Members to delete tasks.
 - **Why:** Requirement 1 explicitly restricts task deletion to Managers, and Requirement 9 mandates immutable history. Soft deletion keeps all timeline logs and related audit records intact while hiding the task from all active views.
+
+## Decision 18: Server-Side Task Lifecycle State Machine & Dependency Validation
+
+- **Chose:** Dedicated `task-rules.service.js` state machine enforcing allowed state paths (`BACKLOG → IN_PROGRESS → IN_REVIEW → DONE`), exact `previousStatus` unblocking, and server-side verification that all blocking dependencies are finished before allowing `DONE`.
+- **Rejected:** Allowing unrestricted status changes or performing dependency checks solely on the frontend.
+- **Why:** Goal 4 mandates strict lifecycle rules and server-level rejection of illegal jumps or premature completions. Centralizing the state machine in a service guarantees database integrity across direct API calls, modal edits, and quick workflow buttons.

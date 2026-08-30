@@ -344,3 +344,55 @@ Add tests for:
 
 ### What you corrected
 - Refactored `prisma.$transaction` in task creation and update methods to ensure full database commits prior to fetching populated relation graphs.
+
+---
+
+## Phase 6 — Task Lifecycle and Dependency Business Rules
+
+### Prompt
+
+```text
+PHASE 6 — TASK LIFECYCLE AND DEPENDENCY BUSINESS RULES
+
+Implement Goal 4 completely.
+
+Allowed lifecycle:
+BACKLOG → IN_PROGRESS → IN_REVIEW → DONE
+IN_PROGRESS → BLOCKED
+IN_REVIEW → BLOCKED
+BLOCKED → exact state from which it was blocked (previousStatus)
+DONE → reopened (IN_PROGRESS)
+
+Dependency rule:
+A task cannot move to DONE if any blocking task is unfinished.
+Validate on the SERVER.
+Return useful error messages (e.g. "Task cannot be marked as DONE because blocking task ALP-12 is not finished.")
+
+Every successful status change must create TaskHistory.
+Every rejected status change must leave the database unchanged.
+
+Frontend:
+- Only display legal next status actions.
+- Show clear error messages from backend.
+
+Add tests for:
+- valid transitions
+- invalid transitions
+- blocking
+- unblocking
+- reopening DONE
+- unfinished dependency blocks DONE
+- completed dependency allows DONE
+- invalid transition does not change database
+- history created on valid transition
+```
+
+### What you got
+- Dedicated `task-rules.service.js` implementing state machine evaluation, legal next status calculation, and blocking dependency completion validation.
+- Integration into `tasks.service.js` with `previousStatus` persistence during `BLOCKED` transitions and atomic `STATUS_CHANGE` history logging.
+- `PATCH /api/tasks/:id/status` endpoint for direct, lightweight status mutations.
+- React frontend UI with interactive workflow buttons offering only currently legal next actions and instant error alert banners on server-rejected transitions.
+- Comprehensive automated test suite (`server/src/tests/lifecycle.test.js`) with 14 test cases (36 total tests across the system with 100% pass rate).
+
+### What you corrected
+- Added granular, actionable error messages for illegal jumps explaining why the transition was rejected (e.g. missing review phase or unfinished blocking tasks).

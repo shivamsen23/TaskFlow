@@ -1,4 +1,5 @@
 const prisma = require('../../prisma');
+const taskRulesService = require('./task-rules.service');
 
 async function getTasks(user, query = {}) {
   const { projectId, assignedToMe } = query;
@@ -57,7 +58,7 @@ async function getTasks(user, query = {}) {
     };
   }
 
-  return prisma.task.findMany({
+  const tasks = await prisma.task.findMany({
     where,
     include: {
       project: {
@@ -90,6 +91,11 @@ async function getTasks(user, query = {}) {
     },
     orderBy: { createdAt: 'desc' }
   });
+
+  return tasks.map((t) => ({
+    ...t,
+    legalNextStatuses: taskRulesService.getLegalNextStatuses(t)
+  }));
 }
 
 async function getTaskById(taskId, user) {
@@ -174,7 +180,10 @@ async function getTaskById(taskId, user) {
     }
   }
 
-  return task;
+  return {
+    ...task,
+    legalNextStatuses: taskRulesService.getLegalNextStatuses(task)
+  };
 }
 
 async function createTask(data, creatorUser) {
@@ -265,6 +274,7 @@ async function createTask(data, creatorUser) {
         description: description ? description.trim() : null,
         priority,
         status,
+        previousStatus: status === 'BLOCKED' ? 'IN_PROGRESS' : null,
         dueDate: dueDate ? new Date(dueDate) : null,
         creatorId: creatorUser.id
       }
@@ -340,6 +350,11 @@ async function updateTask(taskId, data, user) {
   } = data;
 
   const existingTask = await getTaskById(taskId, user);
+
+  // Validate status transition rules if status is changing
+  if (status !== undefined && status !== existingTask.status) {
+    await taskRulesService.validateStatusTransition(existingTask, status);
+  }
 
   // Validate assignees if provided
   if (assigneeIds !== undefined) {
@@ -438,6 +453,14 @@ async function updateTask(taskId, data, user) {
 
     if (status !== undefined && status !== existingTask.status) {
       updatePayload.status = status;
+
+      // Manage previousStatus for BLOCKED state transitions
+      if (status === 'BLOCKED') {
+        updatePayload.previousStatus = existingTask.status;
+      } else if (existingTask.status === 'BLOCKED') {
+        updatePayload.previousStatus = null;
+      }
+
       await tx.taskHistory.create({
         data: {
           taskId,
@@ -547,6 +570,15 @@ async function updateTask(taskId, data, user) {
   return getTaskById(taskId, user);
 }
 
+async function updateTaskStatus(taskId, status, user) {
+  if (!status) {
+    const error = new Error('status is required');
+    error.status = 400;
+    throw error;
+  }
+  return updateTask(taskId, { status }, user);
+}
+
 async function deleteTask(taskId, user) {
   // Enforce manager-only task deletion (Requirement 1 & Goal 3)
   if (user.role !== 'MANAGER') {
@@ -592,5 +624,6 @@ module.exports = {
   getTaskById,
   createTask,
   updateTask,
+  updateTaskStatus,
   deleteTask
 };

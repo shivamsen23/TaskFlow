@@ -312,11 +312,14 @@ export default function TaskModal({
                   outline: 'none'
                 }}
               >
-                <option value="BACKLOG">BACKLOG</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="IN_REVIEW">IN_REVIEW</option>
-                <option value="BLOCKED">BLOCKED</option>
-                <option value="DONE">DONE</option>
+                {(isEdit
+                  ? Array.from(new Set([task.status, ...(task.legalNextStatuses || [])]))
+                  : ['BACKLOG', 'IN_PROGRESS']
+                ).map((s) => (
+                  <option key={s} value={s}>
+                    {s} {s === task?.status ? '(Current)' : ''}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

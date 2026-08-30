@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node src/tests/auth.test.js && node src/tests/projects.test.js && node src/tests/tasks.test.js",
+    "test": "node src/tests/auth.test.js && node src/tests/projects.test.js && node src/tests/tasks.test.js && node src/tests/lifecycle.test.js",
     "test:auth": "node src/tests/auth.test.js",
     "test:projects": "node src/tests/projects.test.js",
-    "test:tasks": "node src/tests/tasks.test.js"
+    "test:tasks": "node src/tests/tasks.test.js",
+    "test:lifecycle": "node src/tests/lifecycle.test.js"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

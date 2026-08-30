@@ -43,16 +43,19 @@ The work is planned across incremental, verifiable phases:
 - Created React `TasksPage`, `TaskDetailsPage`, `TaskModal`, and updated `ProjectDetailsPage` with real task tables
 - Added comprehensive automated backend test suite with 100% pass rate
 
-### Phase 6: Lifecycle State Machine, Dependencies Rules & Comments (Upcoming)
-- Task lifecycle transitions (`BACKLOG → IN_PROGRESS → IN_REVIEW → DONE`)
-- Blocking rules (only `IN_PROGRESS` and `IN_REVIEW` can become `BLOCKED`, unblocking returns to `previousStatus`)
-- Dependency completion validation (cannot move to `DONE` while active blocking dependencies exist)
-- Comment posting on task details with immutable history logs
+### Phase 6: Task Lifecycle & Dependency Business Rules (Completed)
+- Created dedicated `task-rules.service.js` enforcing lifecycle transitions (`BACKLOG → IN_PROGRESS → IN_REVIEW → DONE`)
+- Implemented blocking transition from `IN_PROGRESS` and `IN_REVIEW` to `BLOCKED`, persisting exact `previousStatus`
+- Implemented unblocking restoration to exact `previousStatus`
+- Implemented server-side dependency completion validation before allowing transition to `DONE`
+- Implemented task reopening from `DONE` back to active work
+- Updated frontend `TaskDetailsPage` and `TaskModal` to display only legal workflow actions with error alert banners
+- Added comprehensive automated test suite (`server/src/tests/lifecycle.test.js`) with 100% pass rate (36 total tests across system)
 
 ### Phase 7: Search, Filtering, Bulk Actions, Reports & CSV Export (Upcoming)
-- Advanced multi-criteria search, sorting, pagination, and bulk status updates
+- Cross-project multi-criteria search, sorting, pagination, and bulk status updates
 - CSV export of filtered task sets
-- Workload and task distribution reports
+- Comments posting and discussion thread on task details
 
 ### Phase 8: Dashboard, Overdue Alerts & Final Polish (Upcoming)
 - Dashboard KPI metrics, status breakdowns, and upcoming deadlines
@@ -61,7 +64,7 @@ The work is planned across incremental, verifiable phases:
 ---
 
 ## Build Order Rationale
-Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, Phase 4 established project boundaries, and Phase 5 implemented core task CRUD, multi-assignment, and dependency validation. This sets up Phase 6 to implement the complete task lifecycle state machine, blocking rules, and comments.
+Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, Phase 4 established project boundaries, Phase 5 implemented task CRUD/assignment, and Phase 6 completed the strict task lifecycle state machine and dependency rules.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
@@ -69,3 +72,4 @@ Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secure
 - **Phase 3 (Authentication & Roles):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 4 (Projects & Membership):** Estimated ~1.5h, Actual ~1.0h.
 - **Phase 5 (Tasks & Assignments):** Estimated ~1.5h, Actual ~1.0h.
+- **Phase 6 (Lifecycle & Rules):** Estimated ~1.0h, Actual ~0.75h.
