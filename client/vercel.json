@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://taskflow-pw01.onrender.com/api/:path*"
+    }
+  ]
+}
