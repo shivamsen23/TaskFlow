@@ -1,15 +1,34 @@
-import React from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/alerts', { credentials: 'include' })
+        .then((res) => res.json())
+        .then((data) => setAlertCount(data.activeCount || 0))
+        .catch(() => setAlertCount(0));
+    }
+  }, [user, location.pathname]);
 
   async function handleLogout() {
     await logout();
     navigate('/login');
   }
+
+  const navLinks = [
+    { to: '/', label: 'Dashboard' },
+    { to: '/projects', label: 'Projects' },
+    { to: '/tasks', label: 'Tasks' },
+    { to: '/alerts', label: 'Alerts', badge: alertCount }
+  ];
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
@@ -23,19 +42,44 @@ export default function AppLayout() {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link to="/" style={{ fontWeight: 700, fontSize: '18px', color: '#f8fafc', letterSpacing: '-0.025em' }}>
+          <Link to="/" style={{ fontWeight: 700, fontSize: '18px', color: '#f8fafc', letterSpacing: '-0.025em', textDecoration: 'none' }}>
             BUSY Task Manager
           </Link>
-          <nav style={{ display: 'flex', gap: '16px' }}>
-            <Link to="/" style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>
-              Dashboard
-            </Link>
-            <Link to="/projects" style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>
-              Projects
-            </Link>
-            <Link to="/tasks" style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>
-              Tasks
-            </Link>
+          <nav style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
+            {navLinks.map((item) => {
+              const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  style={{
+                    color: isActive ? '#ffffff' : '#94a3b8',
+                    fontSize: '14px',
+                    fontWeight: isActive ? 600 : 500,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {item.label}
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span style={{
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '1px 6px',
+                      borderRadius: '9999px',
+                      minWidth: '18px',
+                      textAlign: 'center'
+                    }}>
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -86,7 +130,8 @@ export default function AppLayout() {
                 padding: '6px 14px',
                 borderRadius: '4px',
                 fontSize: '13px',
-                fontWeight: 500
+                fontWeight: 500,
+                textDecoration: 'none'
               }}
             >
               Sign In

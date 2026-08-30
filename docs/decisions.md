@@ -125,3 +125,15 @@
 - **Chose:** Generating all audit logs automatically within backend services during business operations, merging `TaskHistory` and `Comment` rows into a unified chronological timeline on the server, and omitting update/delete routes entirely.
 - **Rejected:** Exposing generic history creation endpoints, allowing comments or logs to be updated or deleted, or relying on client-generated audit trails.
 - **Why:** Goal 9 mandates: *"Nothing in the timeline can be edited or deleted after the fact, including by managers."* Enforcing append-only persistence in database schema and routing guarantees an unalterable audit log.
+
+## Decision 22: Server-Side Portfolio Dashboard Aggregations
+
+- **Chose:** Performing all metric calculations (open tasks, overdue tasks, deadlines this week, completed this week, status distributions, team workloads, 8-week historical trend) via Prisma database queries inside `dashboard.service.js`.
+- **Rejected:** Pulling all historical tasks into the React browser state and computing numbers on the client.
+- **Why:** Goal 8 mandates server calculations. Computing metrics server-side ensures instant dashboard loading times, reduces bandwidth overhead, and strictly enforces user project access control at the database level.
+
+## Decision 23: Assignment-Authorized Alert Dismissal & Declarative Invalidation
+
+- **Chose:** Enforcing on the server that only assigned members (or managers) can dismiss overdue task alerts, combined with storing `dismissedDueDate` snapshots on `AlertDismissal`.
+- **Rejected:** Allowing any user to dismiss any alert, or using `localStorage` flags for alert visibility.
+- **Why:** Goal 10 requires: *"A user can dismiss an alert only for a task they are assigned to. If the task due date changes after dismissal, the alert must become active again."* Storing the `dismissedDueDate` snapshot directly in PostgreSQL ensures alerts resurface automatically without background workers or triggers when due dates are changed.

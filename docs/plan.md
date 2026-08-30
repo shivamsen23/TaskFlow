@@ -2,7 +2,7 @@
 
 ## Work Breakdown & Sessions
 
-The work is planned across incremental, verifiable phases:
+The entire project was built and verified across 10 incremental, test-backed phases:
 
 ### Phase 1: Project Initialization (Completed)
 - Environment configuration (`.env.example`, `.gitignore`)
@@ -73,16 +73,20 @@ The work is planned across incremental, verifiable phases:
 - Built unified chronological timeline combining system events and comments in `GET /api/tasks/:id`
 - Enforced strict append-only constraints with zero update/delete history endpoints
 - Updated `TaskDetailsPage` with threaded discussion feed and comment authoring form
-- Added comprehensive automated test suite (`server/src/tests/history-comments.test.js`) with 8 test cases (60 total backend tests passing)
+- Added comprehensive automated test suite with 8 test cases
 
-### Phase 10: Dashboard & Overdue Alerts (Upcoming)
-- Dashboard KPI headline metrics (open, overdue, due this week, completed this week), completion charts over 8 weeks, and breakdowns by status and assignee
-- Overdue alerts area with navbar counter badge and dynamic invalidation on due date change
+### Phase 10: Dashboard & Overdue Alerts (Completed)
+- Implemented `GET /api/dashboard` calculating headline metrics (open, overdue, due this week, completed this week), 8-week completion trend, status breakdown, and team workload breakdown
+- Implemented `GET /api/alerts` and `POST /api/alerts/:taskId/dismiss` with assignment-authorized dismissal and automatic due-date invalidation
+- Created React `DashboardPage` with interactive Recharts visualizations (Area Chart, Bar Charts)
+- Created React `AlertsPage` with active/all filter toggles and inline dismissal actions
+- Added live overdue counter badge to navigation header in `AppLayout`
+- Added comprehensive automated test suite (`server/src/tests/dashboard-alerts.test.js`) with 8 test cases (68 total backend tests passing)
 
 ---
 
 ## Build Order Rationale
-Phase 1 established scaffolding, Phase 2 persistence, Phase 3 auth, Phase 4 projects, Phase 5 tasks/assignments, Phase 6 lifecycle state rules, Phase 7 server-side filtering/pagination, Phase 8 partial-success bulk operations and CSV export, and Phase 9 immutable audit history and comments.
+Phase 1 established scaffolding, Phase 2 persistence, Phase 3 auth, Phase 4 projects, Phase 5 tasks/assignments, Phase 6 lifecycle state rules, Phase 7 server-side filtering/pagination, Phase 8 partial-success bulk operations and CSV export, Phase 9 immutable audit history and comments, and Phase 10 dashboard portfolio metrics and overdue alerts.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
@@ -94,3 +98,5 @@ Phase 1 established scaffolding, Phase 2 persistence, Phase 3 auth, Phase 4 proj
 - **Phase 7 (Search, Filter, Pagination):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 8 (Bulk Actions & CSV):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 9 (History & Comments):** Estimated ~1.0h, Actual ~0.75h.
+- **Phase 10 (Dashboard & Alerts):** Estimated ~1.5h, Actual ~1.0h.
+- **Total Time:** ~7.5 hours.

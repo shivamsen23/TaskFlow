@@ -9,6 +9,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailsPage from './pages/ProjectDetailsPage';
 import TasksPage from './pages/TasksPage';
 import TaskDetailsPage from './pages/TaskDetailsPage';
+import AlertsPage from './pages/AlertsPage';
 
 export default function App() {
   return (
@@ -27,10 +28,12 @@ export default function App() {
             }
           >
             <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailsPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="tasks/:id" element={<TaskDetailsPage />} />
+            <Route path="alerts" element={<AlertsPage />} />
           </Route>
 
           {/* Catch-all redirect */}

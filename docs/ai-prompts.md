@@ -548,3 +548,60 @@ Add tests for:
 
 ### What you corrected
 - Unified history and comments into a single chronological timeline feed without needing polymorphic database tables.
+
+---
+
+## Phase 10 — Dashboard and Overdue Alerts
+
+### Prompt
+
+```text
+PHASE 10 — DASHBOARD AND OVERDUE ALERTS
+
+Implement Goal 8 and Goal 10.
+
+DASHBOARD
+Create GET /api/dashboard with server-side calculations:
+1. Open tasks
+2. Overdue tasks
+3. Due this week
+4. Completed this week
+5. Tasks by status
+6. Tasks by assignee
+7. Completion trend for last 8 weeks
+Respect user's project visibility.
+
+Frontend dashboard with Recharts:
+- metric cards
+- status chart
+- assignee workload chart
+- 8-week completion chart
+- overdue task section
+
+ALERTS
+Create GET /api/alerts and POST /api/alerts/:taskId/dismiss.
+Overdue task: dueDate in the past, status != DONE.
+Navigation shows alert count badge.
+Assigned members can dismiss.
+If task dueDate changes after dismissal, alert becomes active again.
+Enforce on server; no localStorage truth.
+
+Add tests for:
+- overdue task appears
+- DONE overdue task does not appear
+- assigned member can dismiss
+- unassigned member cannot dismiss (403)
+- dismissed alert remains dismissed while dueDate unchanged
+- changing dueDate causes alert to reappear
+```
+
+### What you got
+- `server/src/modules/dashboard/` implementing server-side aggregation for KPI headline metrics, status distributions, team workloads, and 8-week completion trends.
+- `server/src/modules/alerts/` implementing overdue task filtering, assignment-authorized dismissal (`AlertDismissal`), and automatic invalidation when due date changes.
+- React `DashboardPage` featuring Recharts visualizations (8-Week Throughput Area Chart, Status Breakdown Bar Chart, Assignee Workload Chart) and overdue task lists.
+- React `AlertsPage` with active/all filter views, days-overdue badges, and inline dismissal buttons.
+- Updated `AppLayout` with a live red pill badge displaying active overdue alert counts.
+- Automated test suite (`server/src/tests/dashboard-alerts.test.js`) with 8 test cases (68 total backend tests passing).
+
+### What you corrected
+- Verified that alert dismissal is evaluated dynamically by comparing `dismissedDueDate` with the live `task.dueDate` in PostgreSQL, enabling automatic alert resurfacing without cron workers.
