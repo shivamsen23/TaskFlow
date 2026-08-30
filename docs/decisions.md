@@ -48,11 +48,11 @@
 - **Rejected:** Mutation hooks / DB triggers to delete dismissal records whenever a task due date changes.
 - **Why:** By recording the task's due date at dismissal time, invalidation becomes purely declarative. When the task's `dueDate` changes, the query `WHERE dismissedDueDate = task.dueDate` naturally returns false, causing the overdue alert to resurface immediately with zero background cleanup jobs or triggers.
 
-## Decision 9: Task Unblock State Persistence (`previousStatus`)
+## Decision 9: Task Unblock State Persistence (`previousStatus`) [Reversed Decision]
 
-- **Chose:** Dedicated nullable `previousStatus` column on the `Task` entity.
-- **Rejected:** Querying the latest `TaskHistory` record at runtime to find which state preceded `BLOCKED`.
-- **Why:** Direct column storage provides instant $O(1)$ read and write performance during state transitions and eliminates race conditions or edge cases from parsing audit log strings.
+- **Initial Approach (Reversed):** In Phase 2, the initial schema omitted a dedicated field for unblocking, intending to look up the preceding state by querying the latest `TaskHistory` status row at runtime.
+- **Why It Was Reversed:** Parsing audit log text dynamically introduces runtime overhead, edge cases, and potential race conditions if multiple concurrent updates occur. Storing `previousStatus` as a nullable column on `Task` provides deterministic $O(1)$ state restoration when unblocking.
+- **Final Decision:** Dedicated nullable `previousStatus` column on `Task`. When a task enters `BLOCKED`, the server persists its current state (`IN_PROGRESS` or `IN_REVIEW`); upon unblocking, it transitions back to `previousStatus` and clears the column.
 
 ## Decision 10: Explicit Join Models (`ProjectMember`, `TaskAssignee`, `TaskDependency`)
 

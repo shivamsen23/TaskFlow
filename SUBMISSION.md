@@ -4,20 +4,23 @@ Fill this in and commit it. This is the first file we open.
 
 ## Links
 
-- **GitHub repository:** <public repo URL>
-- **Live application:** <deployed URL>
+- **GitHub repository:** TBD
+- **Live application:** TBD
 
 ## Notes for the reviewer
 
-<Anything we should know before opening the link — e.g. your host sleeps when idle and the first
-request can take up to a minute.>
+The database is pre-seeded with realistic projects (Apollo, Nexus, Titan, Legacy Archive), tasks across all lifecycle stages, cross-project member isolations, dependencies, audit logs, comments, and overdue alerts.
 
 ## Demo credentials
 
-| Role | Email | Password |
-|------|-------|----------|
-| MANAGER | sarah.chen@busyinfotech.com | Password123! |
-| MEMBER | elena.rostova@busyinfotech.com | Password123! |
+| Role | Name | Email | Password | Project Access |
+|------|------|-------|----------|----------------|
+| MANAGER | Shivam Sen | shivam.sen@busyinfotech.com | Password123! | All Projects |
+| MANAGER | Rahul Sharma | rahul.sharma@busyinfotech.com | Password123! | All Projects (Nexus Owner) |
+| MEMBER | Elena Rostova | elena.rostova@busyinfotech.com | Password123! | Apollo & Titan |
+| MEMBER | Arjun Mehta | arjun.mehta@busyinfotech.com | Password123! | Nexus |
+| MEMBER | Priya Patel | priya.patel@busyinfotech.com | Password123! | Nexus & Titan |
+| MEMBER | Marcus Johnson | marcus.johnson@busyinfotech.com | Password123! | Apollo |
 
 ## Stack
 
