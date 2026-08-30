@@ -50,21 +50,29 @@ The work is planned across incremental, verifiable phases:
 - Implemented server-side dependency completion validation before allowing transition to `DONE`
 - Implemented task reopening from `DONE` back to active work
 - Updated frontend `TaskDetailsPage` and `TaskModal` to display only legal workflow actions with error alert banners
-- Added comprehensive automated test suite (`server/src/tests/lifecycle.test.js`) with 100% pass rate (36 total tests across system)
+- Added comprehensive automated test suite with 100% pass rate
 
-### Phase 7: Search, Filtering, Bulk Actions, Reports & CSV Export (Upcoming)
-- Cross-project multi-criteria search, sorting, pagination, and bulk status updates
-- CSV export of filtered task sets
-- Comments posting and discussion thread on task details
+### Phase 7: Server-Side Task Search, Filtering, Sorting & Pagination (Completed)
+- Extended `GET /api/tasks` with parameterized Prisma queries (`search`, `project`, `status`, `assignee`, `priority`, `overdue`, `sortBy`, `sortOrder`, `page`, `limit`)
+- Implemented server-side text search over titles and descriptions with `mode: 'insensitive'`
+- Built server-side pagination returning `{ data, pagination: { page, limit, total, totalPages } }`
+- Maintained strict member project visibility authorization in PostgreSQL queries
+- Updated `TasksPage` UI with server-queried filters, search form, sorting dropdowns, and pagination controls
+- Added comprehensive automated test suite (`server/src/tests/search-filter.test.js`) with 10 passed tests (46 total backend tests passing)
 
-### Phase 8: Dashboard, Overdue Alerts & Final Polish (Upcoming)
-- Dashboard KPI metrics, status breakdowns, and upcoming deadlines
-- Overdue alerts system with navbar badge counter and dynamic invalidation
+### Phase 8: Bulk Actions, Reports & CSV Export (Upcoming)
+- Multi-task selection and atomic batch mutations with per-task error reporting
+- Filtered CSV dataset export
+- Comment thread authoring on task details
+
+### Phase 9: Dashboard, Overdue Alerts & Final Polish (Upcoming)
+- Dashboard KPI headline metrics, completion charts, and breakdown tables
+- Overdue alerts area with navbar counter badge and dynamic invalidation
 
 ---
 
 ## Build Order Rationale
-Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, Phase 4 established project boundaries, Phase 5 implemented task CRUD/assignment, and Phase 6 completed the strict task lifecycle state machine and dependency rules.
+Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, Phase 4 established project boundaries, Phase 5 implemented task CRUD/assignment, Phase 6 completed strict lifecycle state machine rules, and Phase 7 built high-performance server-side search, filtering, and pagination.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
@@ -73,3 +81,4 @@ Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secure
 - **Phase 4 (Projects & Membership):** Estimated ~1.5h, Actual ~1.0h.
 - **Phase 5 (Tasks & Assignments):** Estimated ~1.5h, Actual ~1.0h.
 - **Phase 6 (Lifecycle & Rules):** Estimated ~1.0h, Actual ~0.75h.
+- **Phase 7 (Search, Filter, Pagination):** Estimated ~1.0h, Actual ~0.75h.

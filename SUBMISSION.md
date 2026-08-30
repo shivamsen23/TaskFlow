@@ -39,7 +39,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | 3 | Tasks inside projects | Done | Project-scoped task CRUD, priority, due dates, dependencies, assignees, manager soft deletion |
 | 4 | A task lifecycle with rules | Done | Server-enforced state machine, BLOCKED exact state restoration via previousStatus, blocking dependency completion validation, reopening |
 | 5 | Assignment | Partial | Project member assignment constraint, multi-assignees, unassign on member removal, history tracking, "Assigned to Me" query |
-| 6 | | | |
+| 6 | Finding things | Done | PostgreSQL server-side title/description search, project/status/assignee/priority/overdue filters, sorting, and pagination |
 | 7 | | | |
 | 8 | | | |
 | 9 | | | |

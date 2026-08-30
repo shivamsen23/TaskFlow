@@ -2,9 +2,8 @@ const tasksService = require('./tasks.service');
 
 async function getTasks(req, res, next) {
   try {
-    const { projectId, assignedToMe } = req.query;
-    const tasks = await tasksService.getTasks(req.user, { projectId, assignedToMe });
-    res.status(200).json({ tasks });
+    const result = await tasksService.getTasks(req.user, req.query);
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

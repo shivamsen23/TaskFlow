@@ -396,3 +396,54 @@ Add tests for:
 
 ### What you corrected
 - Added granular, actionable error messages for illegal jumps explaining why the transition was rejected (e.g. missing review phase or unfinished blocking tasks).
+
+---
+
+## Phase 7 — Server-Side Task Search, Filtering, Sorting & Pagination
+
+### Prompt
+
+```text
+PHASE 7 — SERVER-SIDE TASK SEARCH FILTERING SORTING PAGINATION
+
+Implement Goal 6.
+
+Extend GET /api/tasks.
+
+Support query parameters:
+page, limit, search, project, status, assignee, priority, overdue, sortBy, sortOrder
+
+Search:
+- title, description (case-insensitive)
+
+Filters:
+- project, status, assignee, priority, overdue
+
+Sorting:
+- due date, priority, last updated
+
+Pagination:
+- page, limit, total, totalPages
+
+Filtering must happen in PostgreSQL through Prisma.
+DO NOT: fetch all tasks into React, filter in JavaScript, sort all records in browser, paginate after loading all tasks.
+
+Return:
+{
+  data: [],
+  pagination: { page, limit, total, totalPages }
+}
+
+Respect project visibility for members.
+Update Tasks UI with search input, filters, sorting, pagination, and result count.
+Add backend tests for combinations of filters.
+```
+
+### What you got
+- Enhanced `GET /api/tasks` in `server/src/modules/tasks/tasks.service.js` using Prisma `where`, `orderBy`, `skip`, `take`, and `count()`.
+- Standardized response returning `{ data, pagination: { page, limit, total, totalPages } }` (along with `tasks` alias for backwards compatibility).
+- React `TasksPage` updated with live search input, filter dropdowns, sorting toggles, pagination controls, and active result counts.
+- Automated test suite (`server/src/tests/search-filter.test.js`) with 10 test cases verifying search, filters, combinations, pagination limits, and member authorization (46 total backend tests passing).
+
+### What you corrected
+- Configured case-insensitive search (`mode: 'insensitive'`) over title and description combined via Prisma `OR`.

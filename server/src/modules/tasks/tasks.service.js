@@ -2,7 +2,24 @@ const prisma = require('../../prisma');
 const taskRulesService = require('./task-rules.service');
 
 async function getTasks(user, query = {}) {
-  const { projectId, assignedToMe } = query;
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    project,
+    projectId,
+    status,
+    assignee,
+    assigneeId,
+    priority,
+    overdue,
+    assignedToMe,
+    sortBy = 'createdAt',
+    sortOrder = 'desc'
+  } = query;
+
+  const targetProject = project || projectId;
+  const targetAssignee = assignee || assigneeId;
 
   const where = {
     deletedAt: null,
@@ -11,22 +28,24 @@ async function getTasks(user, query = {}) {
     }
   };
 
-  // If specific project requested
-  if (projectId) {
-    // Check access
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+  // 1. Project Filter & Authorization
+  if (targetProject) {
+    // Look up project by ID or Key
+    const projRecord = await prisma.project.findFirst({
+      where: {
+        OR: [{ id: targetProject }, { key: targetProject.toUpperCase() }]
+      },
       include: { members: true }
     });
 
-    if (!project) {
+    if (!projRecord) {
       const error = new Error('Project not found');
       error.status = 404;
       throw error;
     }
 
     if (user.role !== 'MANAGER') {
-      const isMember = project.members.some((m) => m.userId === user.id);
+      const isMember = projRecord.members.some((m) => m.userId === user.id);
       if (!isMember) {
         const error = new Error('Access denied: You are not a member of this project');
         error.status = 403;
@@ -34,7 +53,7 @@ async function getTasks(user, query = {}) {
       }
     }
 
-    where.projectId = projectId;
+    where.projectId = projRecord.id;
   } else {
     // Cross-project visibility: Members only see tasks in projects they belong to
     if (user.role !== 'MANAGER') {
@@ -49,8 +68,36 @@ async function getTasks(user, query = {}) {
     }
   }
 
-  // Filter assigned to current user
-  if (assignedToMe === 'true' || assignedToMe === true) {
+  // 2. Search Filter (Title & Description)
+  if (search && search.trim()) {
+    const q = search.trim();
+    where.AND = where.AND || [];
+    where.AND.push({
+      OR: [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } }
+      ]
+    });
+  }
+
+  // 3. Status Filter
+  if (status) {
+    where.status = status;
+  }
+
+  // 4. Priority Filter
+  if (priority) {
+    where.priority = priority;
+  }
+
+  // 5. Assignee Filter
+  if (targetAssignee) {
+    where.assignees = {
+      some: {
+        userId: targetAssignee
+      }
+    };
+  } else if (assignedToMe === 'true' || assignedToMe === true) {
     where.assignees = {
       some: {
         userId: user.id
@@ -58,44 +105,92 @@ async function getTasks(user, query = {}) {
     };
   }
 
-  const tasks = await prisma.task.findMany({
-    where,
-    include: {
-      project: {
-        select: { id: true, key: true, name: true }
-      },
-      creator: {
-        select: { id: true, name: true, email: true }
-      },
-      assignees: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, role: true }
+  // 6. Overdue Filter
+  if (overdue === 'true' || overdue === true) {
+    where.dueDate = { lt: new Date() };
+    where.status = { not: 'DONE' };
+  }
+
+  // 7. Sorting
+  const orderDirection = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
+  let orderByClause = { createdAt: 'desc' };
+
+  if (sortBy === 'dueDate') {
+    // Put null due dates last when ascending, first when descending
+    orderByClause = { dueDate: orderDirection };
+  } else if (sortBy === 'priority') {
+    orderByClause = { priority: orderDirection };
+  } else if (sortBy === 'updatedAt' || sortBy === 'lastUpdated') {
+    orderByClause = { updatedAt: orderDirection };
+  } else if (sortBy === 'createdAt') {
+    orderByClause = { createdAt: orderDirection };
+  } else if (sortBy === 'title') {
+    orderByClause = { title: orderDirection };
+  }
+
+  // 8. Pagination Calculations
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+  const skip = (pageNum - 1) * limitNum;
+  const take = limitNum;
+
+  // 9. Execute Prisma count and query concurrently
+  const [total, tasks] = await Promise.all([
+    prisma.task.count({ where }),
+    prisma.task.findMany({
+      where,
+      skip,
+      take,
+      orderBy: orderByClause,
+      include: {
+        project: {
+          select: { id: true, key: true, name: true }
+        },
+        creator: {
+          select: { id: true, name: true, email: true }
+        },
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, role: true }
+            }
           }
-        }
-      },
-      blockingDependencies: {
-        include: {
-          blockingTask: {
-            select: { id: true, title: true, status: true, priority: true }
+        },
+        blockingDependencies: {
+          include: {
+            blockingTask: {
+              select: { id: true, title: true, status: true, priority: true }
+            }
           }
-        }
-      },
-      _count: {
-        select: {
-          comments: true,
-          blockingDependencies: true,
-          blockedByDependencies: true
+        },
+        _count: {
+          select: {
+            comments: true,
+            blockingDependencies: true,
+            blockedByDependencies: true
+          }
         }
       }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+    })
+  ]);
 
-  return tasks.map((t) => ({
+  const tasksWithLegal = tasks.map((t) => ({
     ...t,
     legalNextStatuses: taskRulesService.getLegalNextStatuses(t)
   }));
+
+  const totalPages = Math.ceil(total / limitNum) || 1;
+
+  return {
+    data: tasksWithLegal,
+    tasks: tasksWithLegal, // Backward-compatible alias
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages
+    }
+  };
 }
 
 async function getTaskById(taskId, user) {

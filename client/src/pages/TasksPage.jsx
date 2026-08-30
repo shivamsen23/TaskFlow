@@ -8,55 +8,74 @@ export default function TasksPage() {
 
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Filters
   const [search, setSearch] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState('');
+  const [selectedAssignee, setSelectedAssignee] = useState('');
+  const [isOverdueOnly, setIsOverdueOnly] = useState(false);
   const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
+
+  // Sorting
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
-  // Load accessible projects for dropdown
+  // Load project options and user list for filter dropdowns
   useEffect(() => {
     fetch('/api/projects', { credentials: 'include' })
       .then((res) => res.json())
       .then((data) => setProjects(data.projects || []))
       .catch((err) => console.error('Failed to fetch projects:', err));
+
+    fetch('/api/users', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => setUsersList(data.users || []))
+      .catch((err) => console.error('Failed to fetch users:', err));
   }, []);
 
-  // Load tasks
+  // Fetch tasks with all server-side query parameters
   async function loadTasks() {
     setLoading(true);
     setError('');
     try {
-      let url = '/api/tasks?';
-      if (selectedProjectId) {
-        url += `projectId=${selectedProjectId}&`;
-      }
-      if (assignedToMeOnly) {
-        url += 'assignedToMe=true&';
-      }
+      const params = new URLSearchParams();
+      params.set('page', page.toString());
+      params.set('limit', limit.toString());
+      params.set('sortBy', sortBy);
+      params.set('sortOrder', sortOrder);
 
-      const res = await fetch(url, { credentials: 'include' });
-      const data = await res.json();
+      if (search.trim()) params.set('search', search.trim());
+      if (selectedProject) params.set('project', selectedProject);
+      if (selectedStatus) params.set('status', selectedStatus);
+      if (selectedPriority) params.set('priority', selectedPriority);
+      if (selectedAssignee) params.set('assignee', selectedAssignee);
+      if (isOverdueOnly) params.set('overdue', 'true');
+      if (assignedToMeOnly) params.set('assignedToMe', 'true');
+
+      const res = await fetch(`/api/tasks?${params.toString()}`, { credentials: 'include' });
+      const resData = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch tasks');
+        throw new Error(resData.error || 'Failed to fetch tasks');
       }
 
-      let list = data.tasks || [];
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        list = list.filter((t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.project?.key.toLowerCase().includes(q) ||
-          t.project?.name.toLowerCase().includes(q)
-        );
+      setTasks(resData.data || resData.tasks || []);
+      if (resData.pagination) {
+        setPagination(resData.pagination);
       }
-      setTasks(list);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,9 +83,33 @@ export default function TasksPage() {
     }
   }
 
+  // Reload on query change
   useEffect(() => {
     loadTasks();
-  }, [selectedProjectId, assignedToMeOnly, search]);
+  }, [
+    page,
+    limit,
+    selectedProject,
+    selectedStatus,
+    selectedPriority,
+    selectedAssignee,
+    isOverdueOnly,
+    assignedToMeOnly,
+    sortBy,
+    sortOrder
+  ]);
+
+  // Handle Search submit / debounce reset to page 1
+  function handleSearchSubmit(e) {
+    e.preventDefault();
+    setPage(1);
+    loadTasks();
+  }
+
+  function handleFilterChange(setter, value) {
+    setter(value);
+    setPage(1);
+  }
 
   async function handleSaveTask(payload, taskId) {
     const isEdit = !!taskId;
@@ -110,34 +153,27 @@ export default function TasksPage() {
 
   function getPriorityColor(priority) {
     switch (priority) {
-      case 'URGENT':
-        return { bg: '#fee2e2', text: '#991b1b' };
-      case 'HIGH':
-        return { bg: '#ffedd5', text: '#9a3412' };
-      case 'MEDIUM':
-        return { bg: '#fef3c7', text: '#92400e' };
+      case 'URGENT': return { bg: '#fee2e2', text: '#991b1b' };
+      case 'HIGH': return { bg: '#ffedd5', text: '#9a3412' };
+      case 'MEDIUM': return { bg: '#fef3c7', text: '#92400e' };
       case 'LOW':
-        return { bg: '#f1f5f9', text: '#475569' };
-      default:
-        return { bg: '#f1f5f9', text: '#475569' };
+      default: return { bg: '#f1f5f9', text: '#475569' };
     }
   }
 
   function getStatusColor(status) {
     switch (status) {
-      case 'DONE':
-        return { bg: '#dcfce7', text: '#166534' };
-      case 'IN_PROGRESS':
-        return { bg: '#dbeafe', text: '#1e40af' };
-      case 'IN_REVIEW':
-        return { bg: '#f3e8ff', text: '#6b21a8' };
-      case 'BLOCKED':
-        return { bg: '#fee2e2', text: '#991b1b' };
+      case 'DONE': return { bg: '#dcfce7', text: '#166534' };
+      case 'IN_PROGRESS': return { bg: '#dbeafe', text: '#1e40af' };
+      case 'IN_REVIEW': return { bg: '#f3e8ff', text: '#6b21a8' };
+      case 'BLOCKED': return { bg: '#fee2e2', text: '#991b1b' };
       case 'BACKLOG':
-      default:
-        return { bg: '#f1f5f9', text: '#475569' };
+      default: return { bg: '#f1f5f9', text: '#475569' };
     }
   }
+
+  const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   return (
     <div>
@@ -146,7 +182,7 @@ export default function TasksPage() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '24px',
+        marginBottom: '20px',
         flexWrap: 'wrap',
         gap: '16px'
       }}>
@@ -155,7 +191,7 @@ export default function TasksPage() {
             Tasks
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', marginTop: '2px' }}>
-            View and manage tasks across your active projects.
+            Server-side search, filtering, and sorting across active project portfolios.
           </p>
         </div>
 
@@ -183,46 +219,83 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Filter and Search Panel */}
       <div style={{
         background: '#ffffff',
-        padding: '16px',
-        borderRadius: '8px',
+        padding: '18px 20px',
+        borderRadius: '10px',
         border: '1px solid #e2e8f0',
         marginBottom: '20px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '16px',
-        flexWrap: 'wrap'
+        flexDirection: 'column',
+        gap: '14px'
       }}>
-        <div style={{ flex: 1, minWidth: '240px' }}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks by title or project key..."
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              fontSize: '14px',
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-              Project:
-            </label>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
+        {/* Row 1: Search Form */}
+        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks by title or description... (Press Enter)"
               style={{
-                padding: '8px 12px',
+                width: '100%',
+                padding: '9px 14px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '14px',
+                outline: 'none'
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            style={{
+              background: '#0f172a',
+              color: '#ffffff',
+              border: 'none',
+              padding: '9px 18px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Search
+          </button>
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+              style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                padding: '9px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </form>
+
+        {/* Row 2: Filter Selectors */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Project Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Project:</label>
+            <select
+              value={selectedProject}
+              onChange={(e) => handleFilterChange(setSelectedProject, e.target.value)}
+              style={{
+                padding: '7px 10px',
                 border: '1px solid #cbd5e1',
                 borderRadius: '6px',
                 fontSize: '13px',
@@ -239,14 +312,141 @@ export default function TasksPage() {
             </select>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
+          {/* Status Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Status:</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => handleFilterChange(setSelectedStatus, e.target.value)}
+              style={{
+                padding: '7px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '13px',
+                background: '#ffffff',
+                outline: 'none'
+              }}
+            >
+              <option value="">All Statuses</option>
+              <option value="BACKLOG">BACKLOG</option>
+              <option value="IN_PROGRESS">IN_PROGRESS</option>
+              <option value="IN_REVIEW">IN_REVIEW</option>
+              <option value="BLOCKED">BLOCKED</option>
+              <option value="DONE">DONE</option>
+            </select>
+          </div>
+
+          {/* Priority Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Priority:</label>
+            <select
+              value={selectedPriority}
+              onChange={(e) => handleFilterChange(setSelectedPriority, e.target.value)}
+              style={{
+                padding: '7px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '13px',
+                background: '#ffffff',
+                outline: 'none'
+              }}
+            >
+              <option value="">All Priorities</option>
+              <option value="URGENT">URGENT</option>
+              <option value="HIGH">HIGH</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+
+          {/* Assignee Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Assignee:</label>
+            <select
+              value={selectedAssignee}
+              onChange={(e) => handleFilterChange(setSelectedAssignee, e.target.value)}
+              style={{
+                padding: '7px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '13px',
+                background: '#ffffff',
+                outline: 'none'
+              }}
+            >
+              <option value="">All Assignees</option>
+              {usersList.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Overdue Checkbox */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#b91c1c', fontWeight: 600, cursor: 'pointer', marginLeft: '4px' }}>
+            <input
+              type="checkbox"
+              checked={isOverdueOnly}
+              onChange={(e) => handleFilterChange(setIsOverdueOnly, e.target.checked)}
+            />
+            <span>Overdue Only</span>
+          </label>
+
+          {/* Assigned To Me Checkbox */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#1e40af', fontWeight: 600, cursor: 'pointer', marginLeft: '4px' }}>
             <input
               type="checkbox"
               checked={assignedToMeOnly}
-              onChange={(e) => setAssignedToMeOnly(e.target.checked)}
+              onChange={(e) => handleFilterChange(setAssignedToMeOnly, e.target.checked)}
             />
-            <span style={{ fontWeight: 500 }}>Assigned to Me</span>
+            <span>Assigned to Me</span>
           </label>
+        </div>
+
+        {/* Row 3: Sorting Options */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '10px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => handleFilterChange(setSortBy, e.target.value)}
+              style={{
+                padding: '6px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '13px',
+                background: '#ffffff',
+                outline: 'none'
+              }}
+            >
+              <option value="createdAt">Creation Date</option>
+              <option value="dueDate">Due Date</option>
+              <option value="priority">Priority</option>
+              <option value="updatedAt">Last Updated</option>
+              <option value="title">Title</option>
+            </select>
+
+            <select
+              value={sortOrder}
+              onChange={(e) => handleFilterChange(setSortOrder, e.target.value)}
+              style={{
+                padding: '6px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '13px',
+                background: '#ffffff',
+                outline: 'none'
+              }}
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+
+          <div style={{ fontSize: '13px', color: '#64748b' }}>
+            Showing <strong>{startRecord}–{endRecord}</strong> of <strong>{pagination.total}</strong> matching tasks
+          </div>
         </div>
       </div>
 
@@ -266,24 +466,23 @@ export default function TasksPage() {
       {/* Task List Table */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '8px',
+        borderRadius: '10px',
         border: '1px solid #e2e8f0',
         overflow: 'hidden',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+        marginBottom: '20px'
       }}>
         {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-            Loading tasks...
+          <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
+            Loading tasks from server...
           </div>
         ) : tasks.length === 0 ? (
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
             <p style={{ fontSize: '16px', fontWeight: 600, color: '#334155' }}>
-              No tasks found
+              No matching tasks found
             </p>
             <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-              {search || selectedProjectId || assignedToMeOnly
-                ? 'Try adjusting your search filters.'
-                : 'Create your first task using the "+ New Task" button.'}
+              Try adjusting or resetting your search filters.
             </p>
           </div>
         ) : (
@@ -461,6 +660,78 @@ export default function TasksPage() {
           </table>
         )}
       </div>
+
+      {/* Pagination Footer */}
+      {pagination.totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '12px 16px',
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{ fontSize: '13px', color: '#64748b' }}>
+            Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.total} total items)
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={pagination.page <= 1}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                background: '#ffffff',
+                fontSize: '13px',
+                color: pagination.page <= 1 ? '#94a3b8' : '#334155',
+                cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              ← Previous
+            </button>
+
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pNum) => (
+              <button
+                key={pNum}
+                onClick={() => setPage(pNum)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  fontWeight: pagination.page === pNum ? 700 : 400,
+                  background: pagination.page === pNum ? '#2563eb' : '#ffffff',
+                  color: pagination.page === pNum ? '#ffffff' : '#334155',
+                  border: pagination.page === pNum ? 'none' : '1px solid #cbd5e1',
+                  cursor: 'pointer'
+                }}
+              >
+                {pNum}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={pagination.page >= pagination.totalPages}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                background: '#ffffff',
+                fontSize: '13px',
+                color: pagination.page >= pagination.totalPages ? '#94a3b8' : '#334155',
+                cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
 
       <TaskModal
         isOpen={isModalOpen}
