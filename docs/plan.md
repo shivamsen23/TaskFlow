@@ -26,26 +26,39 @@ The work is planned across incremental, verifiable phases:
 - Updated `AppLayout` to display current user name, role badge, and sign-out controls
 - Created comprehensive backend auth test suite with 100% pass rate
 
-### Phase 4: Core Project & Task Management (Upcoming)
-- Project CRUD (manager-only creation/archive) and membership management
-- Task lifecycle state machine (`Backlog → In Progress → In Review → Done`, `Blocked` and unblock restoration) and intra-project dependency validation
+### Phase 4: Core Project & Project Membership Management (Completed)
+- Implemented `GET /api/projects`, `GET /api/projects/:id`, `POST /api/projects`, `PUT /api/projects/:id`, `PATCH /api/projects/:id/archive`, `PATCH /api/projects/:id/restore`, `POST /api/projects/:id/members`, `DELETE /api/projects/:id/members/:userId`
+- Enforced project isolation: Members only receive projects they belong to; 403 on non-member access
+- Enforced manager-only project creation, archival, restoration, and team membership management
+- Implemented atomic transactional unassignment and `TaskHistory` generation on project member removal
+- Created React `ProjectsPage`, `ProjectDetailsPage`, `ProjectModal`, and `AddMemberModal` styled per `docs/ui-reference.png`
+- Added comprehensive automated backend test suite with 100% pass rate
 
-### Phase 5: Search, Filtering, Bulk Actions & History (Upcoming)
-- Server-side task search/filters/pagination
-- Bulk updates with individual failure reporting, immutable history/audit trail, CSV export
+### Phase 5: Tasks, Lifecycle State Machine & Dependencies (Upcoming)
+- Task CRUD within projects (title, description, priority, due date, assignees, dependencies)
+- Task lifecycle state machine (`Backlog → In Progress → In Review → Done`, `Blocked` from `In Progress`/`In Review`, and returning to `previousStatus` on unblock)
+- Server-side dependency validation (intra-project constraint, blocking tasks must be `DONE` before dependent moves to `DONE`)
 
-### Phase 6: Dashboard, Overdue Alerts & Polish (Upcoming)
-- Dashboard metrics and charts, overdue alerts with badge and dismissal logic
+### Phase 6: Search, Filtering, Bulk Actions, History & Comments (Upcoming)
+- Cross-project task search/filtering/sorting/pagination
+- Multi-task bulk operations with individual per-task success/failure reporting
+- Immutable timeline history and comment posting
+- CSV export of filtered task lists
+
+### Phase 7: Dashboard, Overdue Alerts & Polish (Upcoming)
+- Dashboard KPI cards, completion trends, and status breakdowns
+- Overdue alerts with navbar badge count and due-date invalidation logic
 
 ---
 
 ## Build Order Rationale
-Phase 1 set up baseline scaffolding, Phase 2 established database persistence, and Phase 3 completed the core security perimeter (Goal 1: Accounts and Roles). This allows subsequent resource endpoints (projects, tasks) to immediately leverage `req.user` and role-based guards.
+Phase 1 established scaffolding, Phase 2 established persistence, Phase 3 secured authentication, and Phase 4 implemented project workspaces and team membership. This provides the project boundary and membership foundation necessary to implement task management, lifecycle transitions, and assignment rules in Phase 5.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
 - **Phase 2 (Database Schema & Seed):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 3 (Authentication & Roles):** Estimated ~1.0h, Actual ~0.75h.
+- **Phase 4 (Projects & Membership):** Estimated ~1.5h, Actual ~1.0h.
 
 ## Scope Adjustments
-- Kept Phase 3 strictly focused on Goal 1 (Accounts and Roles) without premature implementation of project or task CRUD.
+- Strictly focused Phase 4 on Goal 2 (Projects) and the project-membership aspect of Goal 5 (task unassignment on removal) without implementing full task CRUD yet.

@@ -227,3 +227,63 @@ Update documentation: architecture.md, decisions.md, ai-prompts.md, plan.md.
 ### What you corrected
 - Configured Express centralized error middleware to selectively log 500 errors to prevent expected 401 invalid-login attempts from polluting console logs.
 - Configured dynamic require for Prisma client in server to ensure cross-module compatibility.
+
+---
+
+## Phase 4 — Projects and Project Membership
+
+### Prompt
+
+```text
+PHASE 4 — PROJECTS AND PROJECT MEMBERSHIP
+
+Implement ONLY Goal 2 and the project-membership part needed for Goal 5.
+
+Managers can:
+- create project
+- edit project
+- archive project
+- restore project
+- set project owner
+- add members
+- remove members
+
+Members:
+- can only see projects they belong to
+- cannot create projects
+- cannot archive/restore projects
+- cannot manage project membership
+
+Important:
+Archiving must NOT delete the project or tasks.
+Archived projects should simply disappear from default active project views.
+
+When removing a member from a project:
+- remove the user from that project's tasks
+- create appropriate assignment history records
+- execute within an atomic transaction
+
+Backend: projects controller, projects service, projects routes.
+Frontend: Projects page, Project Details page, Create/Edit Project modal, Member management UI following docs/ui-reference.png.
+
+Add tests for:
+- manager creates project
+- member cannot create project (403)
+- member only sees projects they belong to
+- member blocked from viewing non-member project (403)
+- manager can archive project
+- archived project remains in DB and disappears from active list
+- manager can restore project
+- removing project member unassigns them from project tasks and logs history
+```
+
+### What you got
+- Projects module (`server/src/modules/projects/`) with `projects.routes.js`, `projects.controller.js`, `projects.service.js`.
+- Server-side project isolation and role authorization: Members only query/view projects they belong to; Managers can query all and access privileged CRUD/archival endpoints.
+- Atomic member removal logic in `prisma.$transaction`: deletes membership, unassigns active project tasks from `TaskAssignee`, and appends `TaskHistory` unassignment audit records.
+- React frontend components (`ProjectsPage`, `ProjectDetailsPage`, `ProjectModal`, `AddMemberModal`, updated `AppLayout`) styled per `docs/ui-reference.png`.
+- Automated test suite (`server/src/tests/projects.test.js`) passing 8 comprehensive test cases.
+
+### What you corrected
+- Protected project owners from accidental self-removal from their own projects unless ownership is explicitly transferred.
+- Ensured default project list query cleanly filters out archived projects while allowing managers to filter and restore archived projects with a single click.

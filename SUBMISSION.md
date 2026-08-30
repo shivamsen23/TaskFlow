@@ -35,7 +35,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
 | 1 | Accounts and roles | Done | JWT via HttpOnly cookies, bcrypt hashing, server-enforced role authorization middleware |
-| 2 | | | |
+| 2 | Projects | Done | Manager CRUD, key, owner, archive/restore without data destruction, member isolation |
 | 3 | | | |
 | 4 | | | |
 | 5 | | | |

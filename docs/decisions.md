@@ -77,3 +77,15 @@
 - **Chose:** Server-side `authenticate` and `requireManager` Express middleware chain.
 - **Rejected:** Relying solely on client UI role checks (e.g. hiding buttons in React).
 - **Why:** Client-side checks are purely cosmetic UX conveniences. True security requires every privileged endpoint to inspect the validated token payload on the server and reject non-manager requests with HTTP 403 Forbidden.
+
+## Decision 14: Project Archival vs Physical Deletion
+
+- **Chose:** Soft archival flag (`Project.archived`) and restricting physical deletion.
+- **Rejected:** Physical SQL DELETE of projects or archiving via separate cold-storage tables.
+- **Why:** Goal 2 requires that archiving hides a project from default active views without destroying tasks, memberships, or history. A boolean flag on `Project` filtered by default in `projectsService.getProjects` satisfies the requirement cleanly without relational disruptions.
+
+## Decision 15: Transactional Member Removal & Automatic Task Unassignment
+
+- **Chose:** Atomic Prisma transaction (`prisma.$transaction`) that deletes `ProjectMember`, finds all active tasks assigned to the user in that project, removes `TaskAssignee` records, and creates individual `TaskHistory` unassignment entries.
+- **Rejected:** Leaving orphan task assignees or running multiple non-transactional queries.
+- **Why:** Goal 5 mandates that removing a user from a project unassigns them from that project's tasks, while Goal 9 requires immutable history tracking. An atomic database transaction guarantees relational consistency and ensures audit records are never skipped.

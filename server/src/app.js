@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const usersRoutes = require('./modules/users/users.routes');
+const projectsRoutes = require('./modules/projects/projects.routes');
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.get('/api/health', (req, res) => {
 // Modular API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/projects', projectsRoutes);
 
 // 404 handler for unmatched routes
 app.use((req, res, next) => {
