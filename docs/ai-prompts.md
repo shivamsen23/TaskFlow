@@ -1,6 +1,6 @@
 # AI Prompts
 
-Short prompts used during development of TaskFlow.
+Prompts used during development of TaskFlow.
 
 These prompts were used to guide Antigravity feature-by-feature during development.
 For each prompt, Antigravity should first inspect the existing code and then make only the required changes.
