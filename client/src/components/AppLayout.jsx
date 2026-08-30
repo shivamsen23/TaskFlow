@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function AppLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, isManager, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [alertCount, setAlertCount] = useState(0);
 
@@ -23,126 +23,209 @@ export default function AppLayout() {
     navigate('/login');
   }
 
-  const navLinks = [
-    { to: '/', label: 'Dashboard' },
-    { to: '/projects', label: 'Projects' },
-    { to: '/tasks', label: 'Tasks' },
-    { to: '/alerts', label: 'Alerts', badge: alertCount }
+  function getInitials(name) {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  }
+
+  const navItems = [
+    { to: '/', label: 'Dashboard', icon: '📊' },
+    { to: '/projects', label: 'Projects', icon: '📁' },
+    { to: '/tasks', label: 'Tasks', icon: '📋' },
+    { to: '/my-tasks', label: 'My Tasks', icon: '👤' },
+    { to: '/alerts', label: 'Alerts', icon: '⚠️', badge: alertCount },
+    { to: '/reports', label: 'Reports', icon: '📈' },
+    ...(isManager ? [{ to: '/users', label: 'Users', icon: '👥' }] : [])
   ];
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-      <header style={{
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+      {/* Dark Navy Sidebar */}
+      <aside style={{
+        width: '240px',
         background: '#0f172a',
-        color: '#fff',
-        padding: '12px 24px',
+        color: '#f8fafc',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
+        borderRight: '1px solid #1e293b',
+        zIndex: 40,
+        flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link to="/" style={{ fontWeight: 700, fontSize: '18px', color: '#f8fafc', letterSpacing: '-0.025em', textDecoration: 'none' }}>
-            BUSY Task Manager
-          </Link>
-          <nav style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
-            {navLinks.map((item) => {
-              const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  style={{
-                    color: isActive ? '#ffffff' : '#94a3b8',
-                    fontSize: '14px',
-                    fontWeight: isActive ? 600 : 500,
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  {item.label}
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span style={{
-                      background: '#dc2626',
-                      color: '#ffffff',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '1px 6px',
-                      borderRadius: '9999px',
-                      minWidth: '18px',
-                      textAlign: 'center'
-                    }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Brand Header */}
+        <div style={{
+          padding: '24px 20px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          borderBottom: '1px solid #1e293b'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 800,
+            fontSize: '16px',
+            color: '#ffffff',
+            boxShadow: '0 2px 4px rgba(37,99,235,0.4)'
+          }}>
+            B
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '15px', color: '#ffffff', letterSpacing: '-0.02em' }}>
+              BUSY Tasks
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+              Workforce Portfolio
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {user ? (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#e2e8f0' }}>
+        {/* Navigation Items */}
+        <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', padding: '6px 12px 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Menu
+          </div>
+          {navItems.map((item) => {
+            const isActive =
+              item.to === '/'
+                ? location.pathname === '/' || location.pathname === '/dashboard'
+                : location.pathname.startsWith(item.to);
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? '#ffffff' : '#94a3b8',
+                  background: isActive ? '#1e293b' : 'transparent',
+                  transition: 'background-color 0.15s, color 0.15s'
+                }}
+                onMouseOver={(e) => {
+                  if (!isActive) e.currentTarget.style.background = '#1e293b80';
+                }}
+                onMouseOut={(e) => {
+                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '15px' }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '2px 7px',
+                    borderRadius: '9999px',
+                    boxShadow: '0 1px 2px rgba(220,38,38,0.4)'
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User Footer Card */}
+        {user && (
+          <div style={{
+            padding: '16px',
+            borderTop: '1px solid #1e293b',
+            background: '#090d16'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: user.role === 'MANAGER' ? '#2563eb' : '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '13px',
+                color: '#ffffff',
+                flexShrink: 0
+              }}>
+                {getInitials(user.name)}
+              </div>
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#f8fafc',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
                   {user.name}
-                </span>
+                </div>
                 <span style={{
-                  fontSize: '11px',
+                  display: 'inline-block',
+                  fontSize: '10px',
                   fontWeight: 700,
-                  padding: '2px 8px',
+                  padding: '1px 6px',
                   borderRadius: '9999px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  background: user.role === 'MANAGER' ? '#3b82f6' : '#64748b',
-                  color: '#ffffff'
+                  background: user.role === 'MANAGER' ? '#1e40af' : '#334155',
+                  color: user.role === 'MANAGER' ? '#93c5fd' : '#cbd5e1',
+                  letterSpacing: '0.04em'
                 }}>
                   {user.role}
                 </span>
               </div>
-              <button
-                onClick={handleLogout}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #334155',
-                  color: '#cbd5e1',
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#1e293b')}
-                onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
-            <Link
-              to="/login"
-              style={{
-                background: '#2563eb',
-                color: '#fff',
-                padding: '6px 14px',
-                borderRadius: '4px',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none'
-              }}
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
-      </header>
+            </div>
 
-      <main style={{ flex: 1, padding: '24px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        <Outlet />
-      </main>
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%',
+                background: '#1e293b',
+                border: '1px solid #334155',
+                color: '#cbd5e1',
+                padding: '7px 0',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textAlign: 'center'
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = '#334155')}
+              onMouseOut={(e) => (e.currentTarget.style.background = '#1e293b')}
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
+      </aside>
+
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
+        <main style={{ flex: 1, padding: '32px 36px', maxWidth: '1280px', width: '100%', margin: '0 auto' }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
