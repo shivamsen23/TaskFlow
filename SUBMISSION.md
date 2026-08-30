@@ -42,7 +42,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | 6 | Finding things | Done | PostgreSQL server-side title/description search, project/status/assignee/priority/overdue filters, sorting, and pagination |
 | 7 | Acting on many tasks at once | Done | Multi-task bulk status/assignee/due-date actions with partial success and per-task error reporting; server-side filtered CSV export |
 | 8 | | | |
-| 9 | | | |
+| 9 | History you cannot rewrite | Done | Append-only TaskHistory and Comment entities, unified chronological timeline, no update/delete endpoints, old/new value tracking |
 | 10 | | | |
 
 ## How much time did you actually spend?

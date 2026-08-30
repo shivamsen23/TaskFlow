@@ -494,3 +494,57 @@ Add backend tests for partial success.
 
 ### What you corrected
 - Centralized `buildTasksWhereAndOrderBy` helper in `tasks.service.js` so `GET /api/tasks` and `GET /api/tasks/export/csv` share identical filtering and sorting logic.
+
+---
+
+## Phase 9 — Immutable Task History and Comments
+
+### Prompt
+
+```text
+PHASE 9 — IMMUTABLE TASK HISTORY AND COMMENTS
+
+Implement Goal 9 completely.
+
+Every task timeline must record:
+- task creation
+- status changes
+- priority changes
+- title changes
+- description changes
+- due date changes
+- assignment
+- unassignment
+- comments
+
+Every record must include who, what happened, when, old value & new value where applicable.
+History must be append-only.
+NO update history endpoint.
+NO delete history endpoint.
+Managers must not be able to modify historical records.
+
+Task details page:
+- display timeline
+- display comments
+- allow adding comment
+- do not allow editing/deleting timeline items
+
+Add tests for:
+- task creation creates history
+- status change creates history
+- field change creates old/new values
+- assignment creates history
+- unassignment creates history
+- comment creates history
+- history update endpoint does not exist
+- history delete endpoint does not exist
+```
+
+### What you got
+- `addComment` service and `POST /api/tasks/:id/comments` endpoint persisting task comments in PostgreSQL with author relations.
+- Extended `GET /api/tasks/:id` to merge `TaskHistory` and `Comment` entities into a single, unified, chronological `timeline` array.
+- Updated `TaskDetailsPage` in React with a threaded activity history and comment timeline and a comment posting form.
+- Automated test suite (`server/src/tests/history-comments.test.js`) with 8 test cases verifying creation, status, field updates, assignments, comments, and lack of edit/delete endpoints (60 total backend tests passing).
+
+### What you corrected
+- Unified history and comments into a single chronological timeline feed without needing polymorphic database tables.

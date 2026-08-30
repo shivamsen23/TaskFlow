@@ -65,17 +65,24 @@ The work is planned across incremental, verifiable phases:
 - Guaranteed partial success: valid tasks commit and create `TaskHistory`; invalid tasks return specific rejection reasons
 - Implemented `GET /api/tasks/export/csv` generating RFC-compliant CSVs from the current server-filtered task set
 - Updated React `TasksPage` with multi-row checkboxes, sticky bulk action bar, per-task result dialog, and Export CSV button
-- Added comprehensive automated test suite (`server/src/tests/bulk-csv.test.js`) with 6 test cases (52 total backend tests passing)
+- Added comprehensive automated test suite with 6 test cases
 
-### Phase 9: Dashboard, Overdue Alerts & Comments (Upcoming)
-- Comments posting and discussion feed on task details
-- Dashboard KPI headline metrics, completion charts, and breakdown tables
-- Overdue alerts area with navbar counter badge and dynamic invalidation
+### Phase 9: Immutable Task History & Comments (Completed)
+- Implemented `POST /api/tasks/:id/comments` persisting task discussion entries in PostgreSQL
+- Generated automatic audit logging across all task mutations (`CREATED`, `STATUS_CHANGE`, `FIELD_UPDATE` with old/new values, `ASSIGNED`, `UNASSIGNED`, `DELETED`)
+- Built unified chronological timeline combining system events and comments in `GET /api/tasks/:id`
+- Enforced strict append-only constraints with zero update/delete history endpoints
+- Updated `TaskDetailsPage` with threaded discussion feed and comment authoring form
+- Added comprehensive automated test suite (`server/src/tests/history-comments.test.js`) with 8 test cases (60 total backend tests passing)
+
+### Phase 10: Dashboard & Overdue Alerts (Upcoming)
+- Dashboard KPI headline metrics (open, overdue, due this week, completed this week), completion charts over 8 weeks, and breakdowns by status and assignee
+- Overdue alerts area with navbar counter badge and dynamic invalidation on due date change
 
 ---
 
 ## Build Order Rationale
-Phase 1 established scaffolding, Phase 2 persistence, Phase 3 auth, Phase 4 projects, Phase 5 tasks/assignments, Phase 6 lifecycle state rules, Phase 7 server-side filtering/pagination, and Phase 8 partial-success bulk operations and CSV export.
+Phase 1 established scaffolding, Phase 2 persistence, Phase 3 auth, Phase 4 projects, Phase 5 tasks/assignments, Phase 6 lifecycle state rules, Phase 7 server-side filtering/pagination, Phase 8 partial-success bulk operations and CSV export, and Phase 9 immutable audit history and comments.
 
 ## Estimates vs Actuals
 - **Phase 1 (Initialization & Scaffolding):** Estimated ~0.5h, Actual ~0.5h.
@@ -86,3 +93,4 @@ Phase 1 established scaffolding, Phase 2 persistence, Phase 3 auth, Phase 4 proj
 - **Phase 6 (Lifecycle & Rules):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 7 (Search, Filter, Pagination):** Estimated ~1.0h, Actual ~0.75h.
 - **Phase 8 (Bulk Actions & CSV):** Estimated ~1.0h, Actual ~0.75h.
+- **Phase 9 (History & Comments):** Estimated ~1.0h, Actual ~0.75h.

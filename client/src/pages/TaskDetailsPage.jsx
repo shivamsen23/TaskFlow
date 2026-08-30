@@ -14,6 +14,11 @@ export default function TaskDetailsPage() {
   const [transitionError, setTransitionError] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Comments state
+  const [commentContent, setCommentContent] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentError, setCommentError] = useState('');
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   async function loadTask() {
@@ -58,6 +63,35 @@ export default function TaskDetailsPage() {
       setTransitionError(err.message);
     } finally {
       setIsTransitioning(false);
+    }
+  }
+
+  async function handleAddComment(e) {
+    e.preventDefault();
+    if (!commentContent.trim()) return;
+
+    setIsSubmittingComment(true);
+    setCommentError('');
+
+    try {
+      const res = await fetch(`/api/tasks/${id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: commentContent.trim() })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to post comment');
+      }
+
+      setCommentContent('');
+      await loadTask();
+    } catch (err) {
+      setCommentError(err.message);
+    } finally {
+      setIsSubmittingComment(false);
     }
   }
 
@@ -169,6 +203,17 @@ export default function TaskDetailsPage() {
       return `changed status from ${h.oldValue} to ${h.newValue}`;
     }
     if (h.action === 'FIELD_UPDATE') {
+      if (h.field === 'dueDate') {
+        const oldD = h.oldValue ? new Date(h.oldValue).toLocaleDateString() : 'none';
+        const newD = h.newValue ? new Date(h.newValue).toLocaleDateString() : 'none';
+        return `changed due date from ${oldD} to ${newD}`;
+      }
+      if (h.field === 'priority') {
+        return `changed priority from ${h.oldValue} to ${h.newValue}`;
+      }
+      if (h.field === 'title') {
+        return `changed title to "${h.newValue}"`;
+      }
       return `updated ${h.field}`;
     }
     if (h.action === 'DELETED') {
@@ -211,6 +256,7 @@ export default function TaskDetailsPage() {
   const pColor = getPriorityColor(task.priority);
   const sColor = getStatusColor(task.status);
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+  const timelineItems = task.timeline || [];
 
   return (
     <div>
@@ -384,8 +430,8 @@ export default function TaskDetailsPage() {
       </div>
 
       {/* Main Grid: Left Details & Right Timeline */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        {/* Left Column */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
+        {/* Left Column: Information & Dependencies */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Description Card */}
           <div style={{
@@ -549,8 +595,9 @@ export default function TaskDetailsPage() {
           </div>
         </div>
 
-        {/* Right Column: Immutable Activity Timeline */}
-        <div>
+        {/* Right Column: Immutable Activity Timeline & Discussion */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Post a Comment Card */}
           <div style={{
             background: '#ffffff',
             padding: '20px 24px',
@@ -558,36 +605,125 @@ export default function TaskDetailsPage() {
             border: '1px solid #e2e8f0',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
-              Activity History
+            <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>
+              Add to Discussion
             </h2>
+            <form onSubmit={handleAddComment}>
+              <textarea
+                rows={3}
+                required
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                placeholder="Leave an update, note, or comment on this task..."
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  outline: 'none',
+                  resize: 'vertical',
+                  marginBottom: '10px'
+                }}
+              />
+              {commentError && (
+                <p style={{ color: '#dc2626', fontSize: '12px', marginBottom: '8px' }}>
+                  {commentError}
+                </p>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  🔒 Comments are permanent and immutable.
+                </span>
+                <button
+                  type="submit"
+                  disabled={isSubmittingComment || !commentContent.trim()}
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '7px 16px',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: isSubmittingComment || !commentContent.trim() ? 'not-allowed' : 'pointer',
+                    opacity: isSubmittingComment || !commentContent.trim() ? 0.6 : 1
+                  }}
+                >
+                  {isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                </button>
+              </div>
+            </form>
+          </div>
 
-            {task.histories && task.histories.length > 0 ? (
+          {/* Activity & Comment Timeline */}
+          <div style={{
+            background: '#ffffff',
+            padding: '20px 24px',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
+                Activity & History
+              </h2>
+              <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600 }}>
+                Append-only
+              </span>
+            </div>
+
+            {timelineItems.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {task.histories.map((h) => (
-                  <div key={h.id} style={{ display: 'flex', gap: '10px', fontSize: '13px' }}>
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#3b82f6',
-                      marginTop: '6px',
-                      flexShrink: 0
-                    }} />
-                    <div>
-                      <p style={{ color: '#334155', lineHeight: 1.4 }}>
-                        <strong>{h.user?.name || 'System'}</strong> {formatHistoryAction(h)}
-                      </p>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                        {new Date(h.createdAt).toLocaleString()}
-                      </span>
+                {timelineItems.map((item) => {
+                  if (item.type === 'COMMENT') {
+                    return (
+                      <div key={`c-${item.id}`} style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '12px 14px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>
+                            💬 {item.user?.name || 'User'}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                            {new Date(item.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                          {item.content}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={`h-${item.id}`} style={{ display: 'flex', gap: '10px', fontSize: '13px' }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: '#3b82f6',
+                        marginTop: '6px',
+                        flexShrink: 0
+                      }} />
+                      <div>
+                        <p style={{ color: '#334155', lineHeight: 1.4 }}>
+                          <strong>{item.user?.name || 'System'}</strong> {formatHistoryAction(item)}
+                        </p>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                          {new Date(item.createdAt).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p style={{ fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>
-                No history recorded yet.
+                No activity recorded yet.
               </p>
             )}
           </div>

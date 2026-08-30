@@ -46,6 +46,16 @@ async function updateTaskStatus(req, res, next) {
   }
 }
 
+async function addComment(req, res, next) {
+  try {
+    const { content } = req.body;
+    const comment = await tasksService.addComment(req.params.id, content, req.user);
+    res.status(201).json({ comment });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function bulkUpdateTasks(req, res, next) {
   try {
     const result = await tasksService.bulkUpdateTasks(req.user, req.body);
@@ -81,6 +91,7 @@ module.exports = {
   createTask,
   updateTask,
   updateTaskStatus,
+  addComment,
   bulkUpdateTasks,
   exportTasksCsv,
   deleteTask

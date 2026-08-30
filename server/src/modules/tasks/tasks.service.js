@@ -280,8 +280,30 @@ async function getTaskById(taskId, user) {
     }
   }
 
+  // Assemble unified chronological timeline (history actions + comments)
+  const timeline = [
+    ...task.histories.map((h) => ({
+      id: h.id,
+      type: 'HISTORY',
+      action: h.action,
+      field: h.field,
+      oldValue: h.oldValue,
+      newValue: h.newValue,
+      createdAt: h.createdAt,
+      user: h.user
+    })),
+    ...task.comments.map((c) => ({
+      id: c.id,
+      type: 'COMMENT',
+      content: c.content,
+      createdAt: c.createdAt,
+      user: c.user
+    }))
+  ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
   return {
     ...task,
+    timeline,
     legalNextStatuses: taskRulesService.getLegalNextStatuses(task)
   };
 }
@@ -840,6 +862,32 @@ async function deleteTask(taskId, user) {
   });
 }
 
+async function addComment(taskId, content, user) {
+  if (!content || !content.trim()) {
+    const error = new Error('Comment content is required');
+    error.status = 400;
+    throw error;
+  }
+
+  // Ensure task exists and user has project membership
+  const task = await getTaskById(taskId, user);
+
+  const comment = await prisma.comment.create({
+    data: {
+      taskId: task.id,
+      userId: user.id,
+      content: content.trim()
+    },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true, role: true }
+      }
+    }
+  });
+
+  return comment;
+}
+
 module.exports = {
   getTasks,
   getTaskById,
@@ -848,5 +896,6 @@ module.exports = {
   updateTaskStatus,
   bulkUpdateTasks,
   exportTasksCsv,
+  addComment,
   deleteTask
 };

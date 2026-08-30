@@ -119,3 +119,9 @@
 - **Chose:** Processing bulk task mutations in independent per-task operations returning detailed per-task `{ taskId, title, success, reason }` status reports, coupled with server-side filtered CSV generation.
 - **Rejected:** Executing the entire bulk batch in a single atomic transaction that rolls back on any single task violation, or building CSV files inside the React client.
 - **Why:** Goal 7 explicitly requires: *"Because some of those changes will be illegal for some tasks, the result must report per task what succeeded and what was rejected and why — not just fail the whole batch."* Independent execution guarantees that valid tasks are saved while invalid tasks are clearly explained.
+
+## Decision 21: Append-Only Immutable History & Unified Chronological Timeline
+
+- **Chose:** Generating all audit logs automatically within backend services during business operations, merging `TaskHistory` and `Comment` rows into a unified chronological timeline on the server, and omitting update/delete routes entirely.
+- **Rejected:** Exposing generic history creation endpoints, allowing comments or logs to be updated or deleted, or relying on client-generated audit trails.
+- **Why:** Goal 9 mandates: *"Nothing in the timeline can be edited or deleted after the fact, including by managers."* Enforcing append-only persistence in database schema and routing guarantees an unalterable audit log.
