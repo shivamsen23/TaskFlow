@@ -155,7 +155,7 @@ Verify unique constraints using Prisma/database operations.
 
 ### What you got
 - `prisma/schema.prisma` modeling all 9 required entities, enums (`Role`, `Priority`, `Status`), relations, and indexes.
-- Database migration `20260830073054_init` executed against PostgreSQL.
+- Database migration `20260830073054_init` and correction `20260830081701_schema_corrections` executed against PostgreSQL.
 - `prisma/seed.js` creating realistic seed data (2 managers, 4 members, 4 projects [active + archived], tasks with dependencies, history, comments, and alert dismissals).
 - Verified unique constraints (`User.email`, `Project.key`, `ProjectMember` composite, `TaskAssignee` composite) and alert invalidation logic via Prisma operations.
 - Updated `docs/schema.md`, `docs/decisions.md`, and `docs/plan.md`.
@@ -163,3 +163,67 @@ Verify unique constraints using Prisma/database operations.
 ### What you corrected
 - Designed `AlertDismissal` with `dismissedDueDate` snapshot so that alerts automatically resurface when a task's due date is changed without requiring mutation hooks or cleanup cron jobs.
 - Added `previousStatus` to the `Task` model to support unblocking restoration directly and efficiently.
+- Refined schema with `deletedAt` for task soft deletion, `Restrict` on immutable history/comments, and added `updatedAt` index on `Task`.
+
+---
+
+## Phase 3 — Authentication and Role Authorization
+
+### Prompt
+
+```text
+PHASE 3 — AUTHENTICATION AND ROLE AUTHORIZATION
+
+Implement ONLY Goal 1: Accounts and Roles.
+
+Requirements:
+- Login using email/password.
+- Passwords stored only as bcrypt/bcryptjs hashes.
+- Never store plaintext passwords.
+- Use JWT authentication.
+- Implement GET /api/auth/me.
+- Implement authentication middleware.
+- Implement manager authorization middleware.
+- Return proper 401 Unauthorized and 403 Forbidden responses.
+- Enforce authorization on the SERVER, not only in React.
+
+Roles:
+- MANAGER
+- MEMBER
+
+Create clean modules:
+server/src/modules/auth/
+server/src/modules/users/
+
+Controllers must remain thin; business logic in services.
+Authentication: prefer HttpOnly cookie for JWT, configure CORS with credentials, no JWT in localStorage.
+
+Frontend:
+- Implement Login page.
+- Implement AuthContext.
+- Implement protected routing.
+- Show current user's name and role.
+- Handle login/logout and authenticated API requests.
+
+Add backend tests for:
+1. valid login
+2. invalid password
+3. missing authentication
+4. member blocked from a manager-only endpoint
+5. manager allowed through a manager-only endpoint
+
+Update documentation: architecture.md, decisions.md, ai-prompts.md, plan.md.
+```
+
+### What you got
+- Backend authentication module (`server/src/modules/auth/`) with `auth.routes.js`, `auth.controller.js`, `auth.service.js`.
+- Users module (`server/src/modules/users/`) with `users.routes.js`, `users.controller.js`, `users.service.js`.
+- Server middleware (`server/src/middleware/auth.middleware.js`) implementing `authenticate` (reads HttpOnly cookies or Bearer tokens) and `requireManager` (checks `req.user.role === 'MANAGER'`).
+- Secured session handling with `HttpOnly`, `SameSite: Lax` cookies and CORS credentials.
+- React `AuthContext`, `ProtectedRoute`, interactive `LoginPage` with demo quick-fill buttons, and role-badged `AppLayout`.
+- Comprehensive backend test suite (`server/src/tests/auth.test.js`) verifying 7 critical authentication/authorization scenarios with 100% pass rate.
+- Updated documentation in `docs/` and credentials in `SUBMISSION.md`.
+
+### What you corrected
+- Configured Express centralized error middleware to selectively log 500 errors to prevent expected 401 invalid-login attempts from polluting console logs.
+- Configured dynamic require for Prisma client in server to ensure cross-module compatibility.

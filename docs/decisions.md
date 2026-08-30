@@ -65,3 +65,15 @@
 - **Chose:** Soft deletion via `Task.deletedAt` and changing foreign key behaviors on `Project → Task`, `Task → TaskHistory`, `Task → Comment`, and `User → Comment` to `onDelete: Restrict`.
 - **Rejected:** Physical SQL `DELETE CASCADE` on tasks, history, and comments.
 - **Why:** Soft deletion preserves immutable historical audit trails and comments even when tasks are removed from active views. Setting foreign keys to `Restrict` prevents unintended cascading data loss when projects or users are referenced.
+
+## Decision 12: Authentication Token Storage (HttpOnly Cookies vs LocalStorage)
+
+- **Chose:** JWT stored in `HttpOnly`, `SameSite: Lax` secure cookies with CORS `credentials: true`.
+- **Rejected:** Storing JWT in `localStorage` or `sessionStorage`.
+- **Why:** LocalStorage is completely vulnerable to Cross-Site Scripting (XSS) attacks where malicious scripts can steal credentials. HttpOnly cookies are inaccessible to browser JavaScript, mitigating XSS token extraction.
+
+## Decision 13: Server-Side Role Enforcement Middleware
+
+- **Chose:** Server-side `authenticate` and `requireManager` Express middleware chain.
+- **Rejected:** Relying solely on client UI role checks (e.g. hiding buttons in React).
+- **Why:** Client-side checks are purely cosmetic UX conveniences. True security requires every privileged endpoint to inspect the validated token payload on the server and reject non-manager requests with HTTP 403 Forbidden.

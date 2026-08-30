@@ -1,8 +1,14 @@
 const { PrismaClient } = require('@prisma/client');
+let bcrypt;
+try {
+  bcrypt = require('bcryptjs');
+} catch (e) {
+  bcrypt = require('../server/node_modules/bcryptjs');
+}
+
 const prisma = new PrismaClient();
 
-// Precomputed bcrypt hash for 'Password123!' (or fallback if bcryptjs not installed)
-const DEFAULT_PASSWORD_HASH = '$2a$10$7JKp6pU4y1z8dE9lI8kU9.M3vIqO1J0a8ZlJqN1wTq0k9y8pL8uGm';
+const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('Password123!', 10);
 
 async function main() {
   console.log('--- Cleaning existing database records ---');

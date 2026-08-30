@@ -1,21 +1,31 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
+
+const authRoutes = require('./modules/auth/auth.routes');
+const usersRoutes = require('./modules/users/users.routes');
 
 const app = express();
 
-// Middleware
+// CORS configuration
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(cors({
   origin: clientUrl,
   credentials: true
 }));
 
+// Parsers
 app.use(express.json());
+app.use(cookieParser());
 
-// Health Check Endpoint
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// Modular API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 
 // 404 handler for unmatched routes
 app.use((req, res, next) => {
@@ -24,8 +34,10 @@ app.use((req, res, next) => {
 
 // Centralized error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack || err);
   const status = err.status || 500;
+  if (status >= 500) {
+    console.error(err.stack || err);
+  }
   res.status(status).json({
     error: err.message || 'Internal Server Error'
   });
