@@ -1,139 +1,87 @@
-# Decisions
+# Technical Decisions
 
-## Decision 1: Project Structure and Script Management
+A summary of the key technical decisions made during the development of TaskFlow.
 
-- **Chose:** Standard two-folder layout (`client/` and `server/`) with root orchestration scripts in root `package.json`.
-- **Rejected:** Monorepo frameworks (Lerna, Turborepo, Nx, npm workspaces).
-- **Why:** For an application of this scope, heavy monorepo tooling introduces unnecessary config overhead, build complexity, and cognitive load. Simple npm scripts provide fast, clear developer workflows without extra dependencies.
+## Decision 1: React + Vite for Frontend
 
-## Decision 2: Frontend Tooling and Routing
+**Chose:** React with Vite.
 
-- **Chose:** React initialized with Vite and React Router (`react-router-dom`).
-- **Rejected:** Next.js / Create React App.
-- **Why:** Vite provides instantaneous hot module reloading, fast build times, and zero-boilerplate configuration. React Router offers straightforward client-side routing matching the SPA requirements.
+**Why:** It offers a fast development workflow, quick build times, and makes building a responsive single-page application straightforward.
 
-## Decision 3: Backend Framework and Layering
+## Decision 2: Node.js + Express for Backend
 
-- **Chose:** Node.js with Express, configured with clean modular middleware (CORS, JSON parsing, 404 handler, centralized error handler).
-- **Rejected:** NestJS or heavy enterprise frameworks with dependency injection and repository wrappers.
-- **Why:** A straightforward `route → controller → service` pattern using Prisma directly inside services provides the right balance of clarity, maintainability, and readability without over-engineering.
+**Chose:** Node.js with Express.
 
-## Decision 4: Environment Variable Strategy
+**Why:** It is lightweight, flexible, and allows for clean modular routing, controllers, and middleware across REST endpoints.
 
-- **Chose:** Single clear `.env.example` in root with local loading in `server/src/server.js` and `.gitignore` safety.
-- **Rejected:** Hardcoded configuration or committed `.env` files.
-- **Why:** Keeps secrets strictly out of version control while making it effortless for new developers or evaluators to set up local environments.
+## Decision 3: PostgreSQL with Supabase
 
-## Decision 5: Language and Module System Selection
+**Chose:** PostgreSQL hosted on Supabase.
 
-- **Chose:** JavaScript (Node.js CommonJS for server, ES Modules for client).
-- **Rejected:** TypeScript.
-- **Why:** JavaScript provides maximum agility and simplicity for the take-home requirements without compilation overhead or overly complex typing boilerplate, aligned with the explicit instruction to avoid unnecessary complexity.
+**Why:** It provides a reliable relational database with strong data integrity, constraints, and easy cloud hosting.
 
-## Decision 6: Primary Key Strategy (UUIDs)
+## Decision 4: Prisma as ORM
 
-- **Chose:** UUID v4 strings (`@default(uuid())`) across all database entities.
-- **Rejected:** Serial auto-incrementing integers.
-- **Why:** UUIDs prevent ID enumeration vulnerabilities, eliminate sequential collision risks, and ensure unambiguous identifiers across distributed services and client state.
+**Chose:** Prisma ORM.
 
-## Decision 7: Immutable Audit History & Comments Architecture
+**Why:** It simplifies database queries, provides type safety, and handles schema migrations cleanly as requirements evolve.
 
-- **Chose:** Dedicated append-only `TaskHistory` and `Comment` tables with explicit `createdAt` and no update triggers or endpoints.
-- **Rejected:** Generic polymorphic event store or editable comment schemas.
-- **Why:** Requirement 9 mandates that timeline entries and comments can never be edited or deleted. Storing structured history with strong foreign keys guarantees referential integrity while preventing retroactive alteration.
+## Decision 5: JWT Authentication
 
-## Decision 8: Alert Dismissal Invalidation Pattern
+**Chose:** JSON Web Tokens (JWT) for user authentication.
 
-- **Chose:** Storing `dismissedDueDate` snapshot on `AlertDismissal`.
-- **Rejected:** Mutation hooks / DB triggers to delete dismissal records whenever a task due date changes.
-- **Why:** By recording the task's due date at dismissal time, invalidation becomes purely declarative. When the task's `dueDate` changes, the query `WHERE dismissedDueDate = task.dueDate` naturally returns false, causing the overdue alert to resurface immediately with zero background cleanup jobs or triggers.
+**Why:** It is stateless, standard, and securely stores the user identity and role for subsequent API requests.
 
-## Decision 9: Task Unblock State Persistence (`previousStatus`) [Reversed Decision]
+## Decision 6: HttpOnly Cookie for JWT
 
-- **Initial Approach (Reversed):** In Phase 2, the initial schema omitted a dedicated field for unblocking, intending to look up the preceding state by querying the latest `TaskHistory` status row at runtime.
-- **Why It Was Reversed:** Parsing audit log text dynamically introduces runtime overhead, edge cases, and potential race conditions if multiple concurrent updates occur. Storing `previousStatus` as a nullable column on `Task` provides deterministic $O(1)$ state restoration when unblocking.
-- **Final Decision:** Dedicated nullable `previousStatus` column on `Task`. When a task enters `BLOCKED`, the server persists its current state (`IN_PROGRESS` or `IN_REVIEW`); upon unblocking, it transitions back to `previousStatus` and clears the column.
+**Chose:** Storing the JWT inside an HttpOnly cookie.
 
-## Decision 10: Explicit Join Models (`ProjectMember`, `TaskAssignee`, `TaskDependency`)
+**Why:** It protects authentication tokens from client-side JavaScript access and reduces the risk of XSS attacks.
 
-- **Chose:** Explicit Prisma join models with composite unique constraints and individual indexes.
-- **Rejected:** Implicit Prisma many-to-many relationship tables.
-- **Why:** Explicit join models provide fine-grained control over timestamps (`joinedAt`, `assignedAt`), cascade behaviors, and future metadata without relying on hidden database tables.
+## Decision 7: MANAGER and MEMBER Roles
 
-## Decision 11: Task Soft Deletion and Restrict Deletion Policy
+**Chose:** A role-based model with MANAGER and MEMBER roles.
 
-- **Chose:** Soft deletion via `Task.deletedAt` and changing foreign key behaviors on `Project → Task`, `Task → TaskHistory`, `Task → Comment`, and `User → Comment` to `onDelete: Restrict`.
-- **Rejected:** Physical SQL `DELETE CASCADE` on tasks, history, and comments.
-- **Why:** Soft deletion preserves immutable historical audit trails and comments even when tasks are removed from active views. Setting foreign keys to `Restrict` prevents unintended cascading data loss when projects or users are referenced.
+**Why:** It keeps permissions simple, allowing managers full administrative control while restricting members to their assigned projects.
 
-## Decision 12: Authentication Token Storage (HttpOnly Cookies vs LocalStorage)
+## Decision 8: Backend Authorization
 
-- **Chose:** JWT stored in `HttpOnly`, `SameSite: Lax` secure cookies with CORS `credentials: true`.
-- **Rejected:** Storing JWT in `localStorage` or `sessionStorage`.
-- **Why:** LocalStorage is completely vulnerable to Cross-Site Scripting (XSS) attacks where malicious scripts can steal credentials. HttpOnly cookies are inaccessible to browser JavaScript, mitigating XSS token extraction.
+**Chose:** Enforcing all permission checks on the server.
 
-## Decision 13: Server-Side Role Enforcement Middleware
+**Why:** Relying only on frontend UI hiding is not secure, so the backend verifies project access and role permissions on every request.
 
-- **Chose:** Server-side `authenticate` and `requireManager` Express middleware chain.
-- **Rejected:** Relying solely on client UI role checks (e.g. hiding buttons in React).
-- **Why:** Client-side checks are purely cosmetic UX conveniences. True security requires every privileged endpoint to inspect the validated token payload on the server and reject non-manager requests with HTTP 403 Forbidden.
+## Decision 9: Explicit Project and Task Relationships
 
-## Decision 14: Project Archival vs Physical Deletion
+**Chose:** Explicit join models for project members, task assignees, and task dependencies.
 
-- **Chose:** Soft archival flag (`Project.archived`) and restricting physical deletion.
-- **Rejected:** Physical SQL DELETE of projects or archiving via separate cold-storage tables.
-- **Why:** Goal 2 requires that archiving hides a project from default active views without destroying tasks, memberships, or history. A boolean flag on `Project` filtered by default in `projectsService.getProjects` satisfies the requirement cleanly without relational disruptions.
+**Why:** It keeps relationships clear and lets us easily track additional metadata like joined dates and assignment history.
 
-## Decision 15: Transactional Member Removal & Automatic Task Unassignment
+## Decision 10: Task Status Workflow
 
-- **Chose:** Atomic Prisma transaction (`prisma.$transaction`) that deletes `ProjectMember`, finds all active tasks assigned to the user in that project, removes `TaskAssignee` records, and creates individual `TaskHistory` unassignment entries.
-- **Rejected:** Leaving orphan task assignees or running multiple non-transactional queries.
-- **Why:** Goal 5 mandates that removing a user from a project unassigns them from that project's tasks, while Goal 9 requires immutable history tracking. An atomic database transaction guarantees relational consistency and ensures audit records are never skipped.
+**Chose:** A strict server-validated status progression (Backlog → In Progress → In Review → Done, with Blocked).
 
-## Decision 16: Server-Side Assignee Membership & Intra-Project Dependency Validation
+**Why:** It ensures tasks move through an orderly lifecycle and prevents illegal status jumps across the board.
 
-- **Chose:** Strict server-side verification that assignees belong to `ProjectMember` and blocking tasks belong to the exact same `projectId`.
-- **Rejected:** Trusting frontend dropdown filters or allowing cross-project task blocking.
-- **Why:** Requirement 3 and Requirement 5 state that only project members may be assigned to project tasks and dependencies are strictly intra-project. Backend validation guarantees data integrity against malformed API requests.
+## Decision 11: Task Dependencies
 
-## Decision 17: Task Soft Deletion with Manager Authorization
+**Chose:** Validating blocking dependencies on the backend before completing a task.
 
-- **Chose:** Soft deletion via `deletedAt = new Date()` protected by `requireManager` middleware and logging a `DELETED` entry in `TaskHistory`.
-- **Rejected:** Hard SQL DELETE or allowing Members to delete tasks.
-- **Why:** Requirement 1 explicitly restricts task deletion to Managers, and Requirement 9 mandates immutable history. Soft deletion keeps all timeline logs and related audit records intact while hiding the task from all active views.
+**Why:** It prevents a task from being marked as Done when its prerequisite tasks are still unfinished.
 
-## Decision 18: Server-Side Task Lifecycle State Machine & Dependency Validation
+## Decision 12: Server-Side Search, Filters, and Pagination
 
-- **Chose:** Dedicated `task-rules.service.js` state machine enforcing allowed state paths (`BACKLOG → IN_PROGRESS → IN_REVIEW → DONE`), exact `previousStatus` unblocking, and server-side verification that all blocking dependencies are finished before allowing `DONE`.
-- **Rejected:** Allowing unrestricted status changes or performing dependency checks solely on the frontend.
-- **Why:** Goal 4 mandates strict lifecycle rules and server-level rejection of illegal jumps or premature completions. Centralizing the state machine in a service guarantees database integrity across direct API calls, modal edits, and quick workflow buttons.
+**Chose:** Performing search, filtering, sorting, and pagination in PostgreSQL via Prisma.
 
-## Decision 19: Server-Side Query Processing vs Client-Side Array Filtering
+**Why:** It keeps frontend performance fast and ensures that large task lists are queried efficiently on the server.
 
-- **Chose:** Full server-side query processing using PostgreSQL `WHERE`, `ORDER BY`, `LIMIT`, and `OFFSET` via Prisma parameterized queries.
-- **Rejected:** Loading the entire task database into React state and filtering/sorting with JavaScript array functions.
-- **Why:** Goal 6 specifically mandates: *"All of this must be done by the server — do not load every task into the browser and filter there."* Server-side filtering scales to tens of thousands of records, respects strict data isolation per role, and minimizes network payload sizes.
+## Decision 13: Task History and Comments
 
-## Decision 20: Bulk Task Partial Success Isolation & Server CSV Streaming
+**Chose:** Append-only history records and comments.
 
-- **Chose:** Processing bulk task mutations in independent per-task operations returning detailed per-task `{ taskId, title, success, reason }` status reports, coupled with server-side filtered CSV generation.
-- **Rejected:** Executing the entire bulk batch in a single atomic transaction that rolls back on any single task violation, or building CSV files inside the React client.
-- **Why:** Goal 7 explicitly requires: *"Because some of those changes will be illegal for some tasks, the result must report per task what succeeded and what was rejected and why — not just fail the whole batch."* Independent execution guarantees that valid tasks are saved while invalid tasks are clearly explained.
+**Why:** It creates an audit trail of changes that cannot be modified or deleted after the fact.
 
-## Decision 21: Append-Only Immutable History & Unified Chronological Timeline
+## Decision 14: Vercel + Render + Supabase Deployment
 
-- **Chose:** Generating all audit logs automatically within backend services during business operations, merging `TaskHistory` and `Comment` rows into a unified chronological timeline on the server, and omitting update/delete routes entirely.
-- **Rejected:** Exposing generic history creation endpoints, allowing comments or logs to be updated or deleted, or relying on client-generated audit trails.
-- **Why:** Goal 9 mandates: *"Nothing in the timeline can be edited or deleted after the fact, including by managers."* Enforcing append-only persistence in database schema and routing guarantees an unalterable audit log.
+**Chose:** Deploying the frontend on Vercel, the backend on Render, and the database on Supabase.
 
-## Decision 22: Server-Side Portfolio Dashboard Aggregations
-
-- **Chose:** Performing all metric calculations (open tasks, overdue tasks, deadlines this week, completed this week, status distributions, team workloads, 8-week historical trend) via Prisma database queries inside `dashboard.service.js`.
-- **Rejected:** Pulling all historical tasks into the React browser state and computing numbers on the client.
-- **Why:** Goal 8 mandates server calculations. Computing metrics server-side ensures instant dashboard loading times, reduces bandwidth overhead, and strictly enforces user project access control at the database level.
-
-## Decision 23: Assignment-Authorized Alert Dismissal & Declarative Invalidation
-
-- **Chose:** Enforcing on the server that only assigned members (or managers) can dismiss overdue task alerts, combined with storing `dismissedDueDate` snapshots on `AlertDismissal`.
-- **Rejected:** Allowing any user to dismiss any alert, or using `localStorage` flags for alert visibility.
-- **Why:** Goal 10 requires: *"A user can dismiss an alert only for a task they are assigned to. If the task due date changes after dismissal, the alert must become active again."* Storing the `dismissedDueDate` snapshot directly in PostgreSQL ensures alerts resurface automatically without background workers or triggers when due dates are changed.
+**Why:** It separates concerns across specialized hosting platforms that are easy to deploy, configure, and maintain.
