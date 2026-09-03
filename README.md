@@ -1,187 +1,194 @@
-# Assignment 01 — Project & Task Tracking
+# TaskFlow
 
-## The scenario
+TaskFlow is a web-based task and project tracking application for managing client engagements, tracking team workload, and coordinating project deliverables.
 
-Picture a services company running work for a dozen or so client projects at any given time — some
-short engagements, some long retainers, each with its own priorities and its own deadlines. The same
-people often work more than one of these projects in a given week, moving between them as things get
-busy or quiet. Right now none of that coordination lives in one place: task lists sit in
-spreadsheets that only one person remembers to update, status gets typed into chat threads and then
-scrolls out of view, and due dates mostly exist in people's heads.
-
-The result is predictable. A manager finds out a deadline was missed when the client brings it up,
-not before. Nobody can answer 'what is overdue' across the whole portfolio with any confidence, or
-say which of their people is quietly buried under four projects while another has nothing this week.
-When someone asks why a task stalled, the honest answer is usually to go ask around, and by the time
-an answer comes back the moment to do anything about it has often passed.
-
-They want one internal tool to replace all of it: somewhere managers set up projects, decide who is
-on each one, and see the whole portfolio at a glance, and somewhere staff go to see what is theirs
-and move it forward. Anyone should be able to get a straight answer to 'what is overdue' or 'who is
-overloaded' without asking around to find out. That is what you are building.
-
-## What it must do
-
-Everything below is required. Several of the ten spell out exact rules — what happens on an illegal
-move, what a bulk action must report back, when a dismissed alert is allowed to reappear — and those
-specifics are the actual ask, not just the bold headline in front of them.
-
-1. **Accounts and roles.** People sign in with an email and password, and there are at least two
-roles — a manager role and a regular member role. Managers can create and archive projects, change
-who is on a project, and delete tasks. Members can do neither, and only see projects they belong to.
-The difference must be enforced on the server, not just hidden in the interface.
-
-2. **Projects.** Managers create projects with a short key, a name, a description and an owner, and
-can edit them later. Projects can be archived and restored. Archiving hides a project from the
-default views without destroying its data or its tasks.
-
-3. **Tasks inside projects.** Every task belongs to exactly one project and carries a title, a
-description, a priority, an optional due date, and any number of other tasks in the same project
-that block it. Tasks can be created, edited, and deleted. Opening a project shows its tasks.
-
-4. **A task lifecycle with rules.** A task moves through *Backlog → In Progress → In Review → Done*,
-and can be marked *Blocked* from either In Progress or In Review. Unblocking returns it to the state
-it was blocked from. A finished task can be reopened. A task with an unfinished blocking task cannot
-move to Done — the server rejects the attempt. Any other jump — Backlog straight to Done, for
-instance — must be rejected by the server with a message explaining why, and the interface should
-only offer the moves that are currently legal.
-
-5. **Assignment.** A task can have any number of people assigned to it, and a person can hold many
-tasks. Only members of a task's project may be assigned to it, and removing someone from a project
-unassigns them from that project's tasks. Every user can see one list of everything assigned to them
-across all projects.
-
-6. **Finding things.** One list shows tasks across every project the viewer can see, with a text
-search over titles and descriptions, filters for project, status, assignee, priority and overdue,
-sorting by due date, priority or last update, and pagination showing the total number of matches.
-All of this must be done by the server — do not load every task into the browser and filter there.
-
-7. **Acting on many tasks at once.** Select several tasks from the list and apply one change to all
-of them: a status move, an assignee change, or a new due date. Because some of those changes will be
-illegal for some tasks, the result must report per task what succeeded and what was rejected and why
-— not just fail the whole batch. Separately, export the currently filtered list as a CSV file.
-
-8. **A dashboard.** A landing view shows headline numbers — open tasks, overdue tasks, due this
-week, completed this week. It also breaks tasks down by status and by assignee, and charts
-completions over the last eight weeks.
-
-9. **History you cannot rewrite.** Every task has a timeline showing when it was created, every
-field change with the old and new value and who made it, every assignment and unassignment, and any
-comments people have left. Comments are part of this timeline. Nothing in the timeline can be edited
-or deleted after the fact, including by managers.
-
-10. **Overdue alerts.** Tasks that are past their due date and not finished appear in an alerts
-area, with a count badge visible in the navigation. A person can dismiss an alert for a task they
-are assigned to. If that task's due date later changes, the alert comes back.
-
-## Stretch ideas (optional)
-
-None of these are required, and none substitute for a goal above. If you finish all ten with time
-left over, pick whichever of these sounds most useful and build it:
-
-- A drag-and-drop board view.
-- Cycle detection across chains of task dependencies, beyond a single blocking relationship.
-- Time tracking.
-- Saved filter views.
-- @-mentions in comments.
-- An email digest of overdue work.
-- Per-project custom fields.
-- An activity feed across all projects.
-- Keyboard-driven navigation.
-
+It provides role-based project access, structured task lifecycles with blocking dependencies, server-side search and filtering, activity history, and real-time dashboard analytics.
 
 ---
 
-## What we are assessing
+## Features
 
-A working application is table stakes. Almost every serious candidate will produce something that runs, has a login, and roughly does what was asked. That's the floor, not the differentiator.
+- **Login and User Roles:** Secure authentication with distinct permissions for managers and team members.
+- **Project Management:** Create, edit, and archive client projects without losing underlying task data.
+- **Task Management:** Full task creation, editing, prioritization, due dates, and soft deletion.
+- **Task Assignments:** Assign multiple project members to tasks and track workload per person.
+- **Task Dependencies & Workflow:** Strict status progression with automatic enforcement of blocking dependencies.
+- **Search, Filters, Sorting & Pagination:** Server-side queries across projects, statuses, priorities, assignees, and overdue work.
+- **Bulk Actions & CSV Export:** Multi-task status/assignee/due-date updates with per-item error reporting, plus filtered CSV downloads.
+- **Task History & Comments:** Append-only activity timeline tracking all field changes, assignments, and team comments.
+- **Dashboard:** Portfolio overview with headline metrics, status distributions, assignee workloads, and completion trends.
+- **Overdue Alerts:** Automated overdue task detection with assignment-based dismissals that reactivate if due dates change.
 
-What actually separates submissions is the record of thinking behind the app: the decisions you made and why, the trade-offs you weighed, what you built first and what you deliberately left out, and whether you can explain any part of your own system when asked. We are hiring for judgement. The app is the evidence for that judgement, not the deliverable in itself.
+---
 
-We also read the code itself for structure and readability, which counts for a small share of the overall score.
+## Tech Stack
 
-## Time budget
+- **Frontend:** React, Vite, React Router, Recharts
+- **Backend:** Node.js, Express
+- **Database:** PostgreSQL (hosted on Supabase)
+- **ORM:** Prisma
+- **Authentication:** JWT stored in secure `HttpOnly` cookies
+- **Deployment:** Vercel (Frontend) + Render (Backend) + Supabase (Database)
 
-Budget about 12 hours total, spent roughly 2 hours a day across a week.
+---
 
-This is not a race. We are not timing you against other candidates, and submitting early scores nothing extra. Twelve hours is a size guide so you know how much to attempt — pace yourself, stop when you're tired, and spend some of that time thinking and documenting, not only typing code.
+## How It Works
 
-## Pick any stack you like
+```text
+Browser / React Frontend
+          ↓
+     Vercel SPA
+          ↓
+  Express REST API (Render)
+          ↓
+      Prisma ORM
+          ↓
+ PostgreSQL (Supabase)
+```
 
-Use any language, any framework, any UI library, any ORM, and any database access approach you want. We have no house stack, and no stack scores better than another — this round is not a test of whether you know particular tools.
+1. **Frontend:** React SPA handles user interactions, protected routing, and dashboard visualizations.
+2. **API Layer:** Express handles REST endpoints, verifies JWT cookies, and executes server-side business rules.
+3. **Database Layer:** Prisma communicates with PostgreSQL to run type-safe queries, handle migrations, and maintain relational constraints.
 
-Use whatever you are fastest and most confident in. Time spent learning something new to impress us is time not spent on the ten goals above, and it will show.
+---
 
-## Using AI is allowed and encouraged
+## User Roles
 
-Use AI tools however you want — to scaffold code, debug a stuck problem, write tests, draft documentation, or anything else that helps you move faster. A few things to know about how we treat it:
+- **MANAGER:** Full administrative control. Can create, edit, and archive projects, manage project members, assign tasks, delete tasks, and view the entire company portfolio.
+- **MEMBER:** Scoped access. Can view only the projects they belong to, update statuses on tasks assigned to them, participate in discussions, and dismiss their own overdue alerts.
 
-- We do not penalise AI use, and we make no attempt to detect it.
-- We care about whether you understood, directed and verified the output — not about who or what produced the first draft of it.
-- `docs/ai-prompts.md` must contain the prompts you actually used, including the ones that produced bad output and what you changed afterwards. If you used no AI at all, say so here and describe how you worked instead — that is assessed the same way.
-- Submitting generated code you cannot explain is the single most common way candidates fail this round.
+---
 
-You are accountable for everything in your submission. If a reviewer points at a piece of code and asks why it's there, or why it works the way it does, "the AI wrote it" is not an answer.
+## Main Task Workflow
 
-## Use git properly
+```text
+BACKLOG ───> IN_PROGRESS ───> IN_REVIEW ───> DONE
+                 │                 │
+                 └───> BLOCKED <───┘
+```
 
-Publish to a public GitHub repository, and commit incrementally as the work actually happens — after each meaningful step, not in one pass at the end.
+- Tasks move sequentially through `BACKLOG → IN_PROGRESS → IN_REVIEW → DONE`.
+- Tasks in `IN_PROGRESS` or `IN_REVIEW` can be moved to `BLOCKED`. Unblocking restores the task to its exact previous state.
+- **Dependency Rule:** A task cannot be marked as `DONE` while any of its blocking task dependencies remain unfinished. The backend validates this rule on every status change.
 
-A repository whose entire history is a single "initial commit" containing a finished app scores zero on git history, and it colours how we read everything else in your submission, however good the app itself is. Your history is how we see the order you built in, where you got stuck, and how the design changed along the way. If it isn't there, we can't assess it, and we won't assume the best.
+---
 
-## What you must commit
+## Live Demo
 
-Alongside your code, commit these five files under `docs/`. Your zip includes a stub for each with the questions it needs to answer — fill them in as you go, not from memory at the end.
+- **Frontend Application:** https://task-flow-sigma-drab.vercel.app/
+- **Backend API:** https://taskflow-pw0i.onrender.com/
+- **Health Check:** https://taskflow-pw0i.onrender.com/api/health
 
-| File | What it must answer |
-|------|----------------------|
-| `docs/architecture.md` | What the moving pieces are, how they talk to each other, where each one runs, the request path for one representative user action end to end, and what you decided not to build. |
-| `docs/schema.md` | Every table's columns and types, which relationships are one-to-many versus many-to-many, which constraints live in the database versus the application, what you deliberately denormalised, and what would break first at 100x the data. |
-| `docs/plan.md` | How you split the work into sessions, what order you built in and why, what you estimated versus what it actually took, and what you cut when you ran short. |
-| `docs/decisions.md` | At least five real decisions — what you chose, what you rejected, and why — including at least one you later reversed. |
-| `docs/ai-prompts.md` | The prompts you actually used, in order, grouped by what you were trying to do, including at least one that produced something wrong and what you did about it. |
+---
 
-## Host it for free
+## Demo Login
 
-Deploy the whole thing somewhere reachable by URL, using free tiers only.
+All demo accounts use the password: `Password123!`
 
-One combination that works, if you would rather not decide:
+| Role | Name | Email | Password | Access |
+|---|---|---|---|---|
+| MANAGER | Shivam Sen | `shivam.sen@busyinfotech.com` | `Password123!` | All Projects |
+| MANAGER | Rahul Sharma | `rahul.sharma@busyinfotech.com` | `Password123!` | All Projects (Nexus Owner) |
+| MEMBER | Elena Rostova | `elena.rostova@busyinfotech.com` | `Password123!` | Apollo & Titan |
+| MEMBER | Arjun Mehta | `arjun.mehta@busyinfotech.com` | `Password123!` | Nexus |
+| MEMBER | Priya Patel | `priya.patel@busyinfotech.com` | `Password123!` | Nexus & Titan |
+| MEMBER | Marcus Johnson | `marcus.johnson@busyinfotech.com` | `Password123!` | Apollo |
 
-- **Database** — a managed service such as Supabase.
-- **Server-side code** — Render.
-- **Browser-side code** — Vercel.
+*(Quick-fill demo buttons are also available directly on the login screen.)*
 
-Deploy in that order: create the database first, give the server its connection details as environment variables, then point the browser-side part at the server's public URL.
+---
 
-This is one option, not a requirement. Any free host is equally acceptable — everything on a single provider, one virtual machine, a container platform, a static host with serverless functions. The choice earns and loses nothing.
+## Running Locally
 
-Requirements:
+### 1. Prerequisites
+- Node.js (v18+)
+- PostgreSQL database (local or cloud instance like Supabase)
 
-- A working live URL.
-- Seeded with enough demo data to show the system doing something, not an empty shell.
-- Demo credentials for every role recorded in `SUBMISSION.md`.
-- Connection strings, keys and passwords kept in environment variables, never in the repository.
-- Free tiers often sleep when idle and can take a minute or more to wake. Note it in `SUBMISSION.md` if yours does, so a slow first load is not read as a broken deployment.
-- If you cannot get it hosted, submit anyway and record in `SUBMISSION.md` what you tried and where it broke.
+### 2. Installation
+Clone the repository and install all dependencies:
+```bash
+npm run install:all
+```
 
-## How to submit
+### 3. Environment Variables
+Create a `.env` file in the root directory:
+```env
+PORT=5000
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require"
+JWT_SECRET="your-jwt-secret-key"
+JWT_EXPIRES_IN="7d"
+CLIENT_URL="http://localhost:5173"
+```
 
-Send us:
+### 4. Database Setup & Seed
+Generate the Prisma client, run migrations, and populate demo data:
+```bash
+npm run db:generate
+npm run db:migrate
+npm run seed
+```
 
-- The URL of your public GitHub repository.
-- The URL of your live, deployed application.
-- Your completed `SUBMISSION.md`, committed to the repository.
+### 5. Start Development Servers
+Run the backend and frontend concurrently:
+```bash
+# Terminal 1: Backend (http://localhost:5000)
+npm run dev:server
 
-That's the whole submission. Nothing else to prepare, no separate form.
+# Terminal 2: Frontend (http://localhost:5173)
+npm run dev:client
+```
 
-## What happens next
+---
 
-If your submission clears the bar, we'll set up a short call. We will ask about specific decisions we can see in your repository and its history — why you modelled something a particular way, what a certain commit was fixing, what you'd change if you kept going.
+## Project Structure
 
-We're telling you this now because it should change how carefully you document as you go. Write `docs/decisions.md` for a version of yourself who has to explain it three weeks from now.
+```text
+TaskFlow/
+├── client/          # React + Vite frontend SPA (pages, components, context, styles)
+├── server/          # Node.js + Express backend (routes, controllers, services, middleware)
+├── prisma/          # Database schema (schema.prisma), migrations, and seed script
+└── docs/            # Architecture, technical decisions, plan, schema, and AI logs
+```
 
-## Scope
+- **`client/`**: React application built with Vite, React Router, and Recharts.
+- **`server/`**: Modular REST API with centralized error handling and JWT cookie authentication.
+- **`prisma/`**: Prisma database schema definitions, migrations, and realistic seed data.
+- **`docs/`**: Comprehensive project documentation for developers and reviewers.
 
-The 10 goals stated in this brief are the cutoff. Meet all 10, solidly, and you have a complete submission.
+---
 
-Stretch ideas are optional. They exist for candidates who finish the 10 with time left and want to keep building — they are never required, and they do not make up for a goal you didn't hit. Doing 8 goals well beats doing 10 goals badly. If time is short, finish fewer goals properly rather than leaving all ten half-done.
+## Testing
+
+- **Backend Test Suite:**
+  ```bash
+  cd server && npm test
+  ```
+  Runs all 8 backend test suites (Auth, Projects, Tasks, Lifecycle, Search/Filter, Bulk/CSV, History/Comments, Dashboard/Alerts).
+
+- **Frontend Production Build:**
+  ```bash
+  cd client && npm run build
+  ```
+  Verifies that all client modules build cleanly with Vite.
+
+---
+
+## Deployment
+
+- **Frontend:** Hosted on **Vercel** with `/api` rewrites proxying requests to the backend.
+- **Backend:** Hosted on **Render** as a Node.js web service.
+- **Database:** Hosted on **Supabase** (PostgreSQL).
+
+> **Note:** Render's free tier spins down web services after periods of inactivity. The first request after idle time may take 30–60 seconds while the server wakes up.
+
+---
+
+## Documentation
+
+For more in-depth technical details, see:
+- [Architecture](docs/architecture.md) — High-level diagrams, request flows, and module explanations.
+- [Schema](docs/schema.md) — Database models, relationships, and rule definitions.
+- [Decisions](docs/decisions.md) — Key technical and architectural decisions.
+- [Plan](docs/plan.md) — Development phases and timeline.
+- [AI Prompts](docs/ai-prompts.md) — Development prompt log.
+- [Submission](SUBMISSION.md) — Assignment submission checklist, credentials, and reflections.
