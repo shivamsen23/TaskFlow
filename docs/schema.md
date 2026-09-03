@@ -1,188 +1,212 @@
-# Schema
+# Schema Documentation
 
-## Overview
+This document describes the complete PostgreSQL database schema managed via Prisma for the BUSY Task Manager.
 
-TaskFlow uses PostgreSQL hosted on Supabase.
+---
 
-Prisma is used as the ORM between the Express backend and PostgreSQL.
+## 1. Tables, Columns, and Data Types
 
-The main models are:
-- User
-- Project
-- ProjectMember
-- Task
-- TaskAssignee
-- TaskDependency
-- TaskHistory
-- Comment
-- AlertDismissal
+### `User`
+Stores system users across both manager and member roles.
 
-## Main Models
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique user identifier |
+| `name` | `String` | `NOT NULL` | Full name of the user |
+| `email` | `String` | `NOT NULL, UNIQUE` | Unique email for login (backed by unique index) |
+| `passwordHash` | `String` | `NOT NULL` | Bcrypt hashed password |
+| `role` | `Enum (Role)` | `NOT NULL, DEFAULT 'MEMBER'` | Role: `MANAGER` or `MEMBER` |
+| `createdAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp of creation |
+| `updatedAt` | `DateTime` | `NOT NULL, @updatedAt` | Timestamp of last modification |
 
-### User
+---
 
-Stores application users.
+### `Project`
+Stores project workspaces containing tasks and memberships. Projects are archived rather than physically deleted.
 
-Important fields:
-- id
-- name
-- email
-- passwordHash
-- role
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique project identifier |
+| `key` | `String` | `NOT NULL, UNIQUE` | Short uppercase project key (e.g., `APOLLO`) |
+| `name` | `String` | `NOT NULL` | Display name of the project |
+| `description` | `String?` | `NULLABLE` | Detailed project description |
+| `ownerId` | `String` (UUID) | `NOT NULL, FK -> User.id (Restrict)` | Project owner (must be a MANAGER) |
+| `archived` | `Boolean` | `NOT NULL, DEFAULT false` | Soft archive flag |
+| `createdAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp of creation |
+| `updatedAt` | `DateTime` | `NOT NULL, @updatedAt` | Timestamp of last modification |
 
-Roles are MANAGER and MEMBER.
+- **Indexes:** `@@index([ownerId])`, `@@index([archived])`
 
-### Project
+---
 
-Stores project information.
+### `ProjectMember`
+Explicit join table modeling many-to-many assignment of users to projects.
 
-Important fields:
-- id
-- key
-- name
-- description
-- owner
-- archived
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique membership identifier |
+| `userId` | `String` (UUID) | `NOT NULL, FK -> User.id (Cascade)` | Assigned user |
+| `projectId` | `String` (UUID) | `NOT NULL, FK -> Project.id (Cascade)` | Assigned project |
+| `joinedAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp when user joined project |
 
-Projects are archived instead of being permanently deleted.
+- **Unique Constraints:** `@@unique([userId, projectId])`
+- **Indexes:** `@@index([userId])`, `@@index([projectId])`
 
-### ProjectMember
+---
 
-Connects users with projects.
+### `Task`
+Core work item entity. Implements soft deletion (`deletedAt`) to preserve immutable audit trails and timeline history.
 
-A project can have many members and a user can belong to many projects.
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique task identifier |
+| `projectId` | `String` (UUID) | `NOT NULL, FK -> Project.id (Restrict)` | Parent project (restricted from accidental cascade) |
+| `title` | `String` | `NOT NULL` | Short title / summary |
+| `description` | `String?` | `NULLABLE` | Detailed Markdown / plain text description |
+| `priority` | `Enum (Priority)` | `NOT NULL, DEFAULT 'MEDIUM'` | `LOW`, `MEDIUM`, `HIGH`, `URGENT` |
+| `status` | `Enum (Status)` | `NOT NULL, DEFAULT 'BACKLOG'` | `BACKLOG`, `IN_PROGRESS`, `IN_REVIEW`, `BLOCKED`, `DONE` |
+| `previousStatus` | `Enum (Status)?` | `NULLABLE` | Remembers previous state when moved to `BLOCKED` (`IN_PROGRESS` or `IN_REVIEW`) |
+| `dueDate` | `DateTime?` | `NULLABLE` | Target completion date |
+| `deletedAt` | `DateTime?` | `NULLABLE` | Soft deletion timestamp (null when active) |
+| `creatorId` | `String` (UUID) | `NOT NULL, FK -> User.id (Restrict)` | Creator of the task |
+| `createdAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp of creation |
+| `updatedAt` | `DateTime` | `NOT NULL, @updatedAt` | Timestamp of last modification |
 
-### Task
+- **Indexes:** `@@index([projectId])`, `@@index([status])`, `@@index([priority])`, `@@index([dueDate])`, `@@index([updatedAt])`, `@@index([deletedAt])`, `@@index([creatorId])`
 
-Stores the main task information.
+---
 
-Important fields:
-- id
-- project
-- title
-- description
-- priority
-- status
-- dueDate
-- creator
-- previousStatus
-- deletedAt
+### `TaskAssignee`
+Explicit join table modeling many-to-many assignments of users to tasks.
 
-Priorities:
-LOW, MEDIUM, HIGH, URGENT
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique assignment identifier |
+| `taskId` | `String` (UUID) | `NOT NULL, FK -> Task.id (Cascade)` | Assigned task |
+| `userId` | `String` (UUID) | `NOT NULL, FK -> User.id (Cascade)` | Assigned user |
+| `assignedAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp when assigned |
 
-Statuses:
-BACKLOG, IN_PROGRESS, IN_REVIEW, BLOCKED, DONE
+- **Unique Constraints:** `@@unique([taskId, userId])`
+- **Indexes:** `@@index([taskId])`, `@@index([userId])`
 
-Tasks use soft deletion so task history can still be kept.
+---
 
-### TaskAssignee
+### `TaskDependency`
+Self-referencing relationship representing blocking task relationships within a project.
 
-Connects users with tasks.
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique dependency identifier |
+| `taskId` | `String` (UUID) | `NOT NULL, FK -> Task.id (Cascade)` | The blocked / dependent task |
+| `blockingTaskId` | `String` (UUID) | `NOT NULL, FK -> Task.id (Cascade)` | The task that blocks progress |
+| `createdAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp when dependency was linked |
 
-A task can have multiple assignees.
+- **Unique Constraints:** `@@unique([taskId, blockingTaskId])`
+- **Indexes:** `@@index([taskId])`, `@@index([blockingTaskId])`
 
-Only members of the task's project can be assigned.
+---
 
-### TaskDependency
+### `TaskHistory`
+Append-only immutable audit log for every change made to a task. Foreign keys use `Restrict` / `SetNull` to guarantee history can never be wiped out.
 
-Stores blocking relationships between tasks.
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique audit record identifier |
+| `taskId` | `String` (UUID) | `NOT NULL, FK -> Task.id (Restrict)` | Target task (protected from deletion) |
+| `userId` | `String?` (UUID) | `NULLABLE, FK -> User.id (SetNull)` | Actor who made the change |
+| `action` | `String` | `NOT NULL` | Event type (`CREATED`, `STATUS_CHANGE`, `FIELD_UPDATE`, etc.) |
+| `field` | `String?` | `NULLABLE` | Changed field name (`status`, `priority`, `dueDate`, etc.) |
+| `oldValue` | `String?` | `NULLABLE` | Previous value formatted as string |
+| `newValue` | `String?` | `NULLABLE` | New value formatted as string |
+| `createdAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp of the event |
 
-Example:
+- **Indexes:** `@@index([taskId])`, `@@index([createdAt])`
 
-```text
-Task A
-  ↓ depends on
-Task B
-```
+---
 
-Task A cannot be completed while Task B is unfinished.
+### `Comment`
+Immutable timeline comments on tasks. Protected with `Restrict` foreign keys.
 
-Dependencies are limited to tasks inside the same project.
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique comment identifier |
+| `taskId` | `String` (UUID) | `NOT NULL, FK -> Task.id (Restrict)` | Target task (protected from deletion) |
+| `userId` | `String` (UUID) | `NOT NULL, FK -> User.id (Restrict)` | Author of the comment |
+| `content` | `String` | `NOT NULL` | Comment body text |
+| `createdAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp when posted |
 
-### TaskHistory
+- **Indexes:** `@@index([taskId])`
 
-Stores important changes made to a task.
+---
 
-Examples:
-- task created
-- status changed
-- priority changed
-- assignee added or removed
-- task details updated
+### `AlertDismissal`
+Tracks overdue alert dismissals per user per task with automatic invalidation on due date change.
 
-History is kept as a record and is not edited or deleted.
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Unique dismissal identifier |
+| `taskId` | `String` (UUID) | `NOT NULL, FK -> Task.id (Cascade)` | Target overdue task |
+| `userId` | `String` (UUID) | `NOT NULL, FK -> User.id (Cascade)` | User who dismissed the alert |
+| `dismissedDueDate` | `DateTime?` | `NULLABLE` | Snapshot of `task.dueDate` at the time of dismissal |
+| `dismissedAt` | `DateTime` | `NOT NULL, DEFAULT now()` | Timestamp when dismissed |
 
-### Comment
+- **Unique Constraints:** `@@unique([taskId, userId])`
+- **Indexes:** `@@index([taskId])`, `@@index([userId])`
 
-Stores comments added to tasks.
+---
 
-Comments are shown together with task history in the activity timeline.
+## 2. Relationships
 
-### AlertDismissal
+- **One-to-Many:**
+  - `User` (1) ↔ `Project` (many, as owner)
+  - `User` (1) ↔ `Task` (many, as creator)
+  - `Project` (1) ↔ `Task` (many, onDelete: Restrict)
+  - `Task` (1) ↔ `TaskHistory` (many, onDelete: Restrict)
+  - `Task` (1) ↔ `Comment` (many, onDelete: Restrict)
+  - `User` (1) ↔ `Comment` (many, onDelete: Restrict)
+- **Many-to-Many (Explicit Join Tables):**
+  - `User` ↔ `Project` via `ProjectMember`
+  - `User` ↔ `Task` via `TaskAssignee`
+  - `Task` ↔ `Task` via `TaskDependency` (self-referential)
+  - `User` ↔ `Task` via `AlertDismissal`
 
-Stores when a user dismisses an overdue task alert.
+---
 
-The due date at the time of dismissal is also stored.
+## 3. Database vs Application-Level Constraints
 
-If the task due date changes later, the alert can become active again.
+### Database-Enforced Constraints:
+- **Uniqueness:** `User.email`, `Project.key`, `[ProjectMember.userId, ProjectMember.projectId]`, `[TaskAssignee.taskId, TaskAssignee.userId]`, `[TaskDependency.taskId, TaskDependency.blockingTaskId]`, `[AlertDismissal.taskId, AlertDismissal.userId]`.
+- **Foreign Key Integrity:** Cascading deletions only on ephemeral join rows (`TaskAssignee`, `TaskDependency`, `AlertDismissal`, `ProjectMember`); `Restrict` on `Project → Task`, `Task → TaskHistory`, `Task → Comment`, and `User → Comment` to prevent accidental deletion of immutable records and project work items.
+- **Enum Validity:** PostgreSQL `ENUM` types for `Role`, `Priority`, `Status`.
 
-## Relationships
+### Application-Enforced Constraints:
+1. **Task Soft Deletion Policy:** The DELETE task endpoint marks `deletedAt = new Date()` rather than performing a physical SQL `DELETE`. All task listings and queries filter `WHERE deletedAt IS NULL` by default.
+2. **Intra-Project Dependency Enforcement:** A blocking task must belong to the exact same `projectId` as the blocked task. Enforced at API layer during dependency creation.
+3. **State Machine Transition Rules:** Enforcing valid status flow (`Backlog → In Progress → In Review → Done`, `Blocked` from `In Progress`/`In Review`, and returning to `previousStatus` on unblock).
+4. **Blocking Completion Gate:** Rejecting transition to `DONE` if any blocking task in `TaskDependency` is not in `DONE` status.
+5. **Project Membership Assignment Gate:** Only users with an active `ProjectMember` record on the task's project can be assigned to `TaskAssignee`.
+6. **Role-Based Authorization:** Managers only for project creation/archiving/membership changes and task deletion.
+7. **Alert Invalidation Logic:** Comparing `AlertDismissal.dismissedDueDate == Task.dueDate`. If the due date was updated, the dismissal record is ignored and the alert resurfaces automatically.
 
-```text
-User
- ├── owns Projects
- ├── joins Projects through ProjectMember
- ├── is assigned to Tasks through TaskAssignee
- └── creates Tasks and Comments
+---
 
-Project
- └── contains Tasks
+## 4. Deliberate Denormalization & Design Decisions
 
-Task
- ├── has Assignees
- ├── can depend on other Tasks
- ├── has History
- ├── has Comments
- └── can have Alert Dismissals
-```
+- **`Task.deletedAt` Soft Deletion:** Preserves task history, audit trails, and comments perpetually even when a task is deleted by a manager.
+- **`Task.previousStatus`:** Stored directly on `Task` rather than querying the latest `TaskHistory` row to resolve unblock transitions. This avoids expensive history joins during hot-path status updates.
+- **`AlertDismissal.dismissedDueDate`:** Stores the exact `dueDate` at dismissal time. This allows checking active alerts with a simple, single indexed SQL join without needing complex audit log traversal or triggers.
+- **`TaskHistory` String Fields (`oldValue`, `newValue`):** Kept as generic strings/JSON to support unified polymorphic history tracking without separate tables for each field type.
 
-## Important Database Rules
+---
 
-- User email must be unique.
-- Project key must be unique.
-- The same user cannot be added to the same project twice.
-- The same user cannot be assigned to the same task twice.
-- Task dependencies cannot be duplicated.
-- Prisma migrations are used to manage schema changes.
+## 5. Scalability Analysis: What Would Break First at 100x Data?
 
-## Application Rules
-
-Some rules are checked by the backend instead of only by the database:
-
-- Only project members can be assigned to project tasks.
-- Blocking tasks must belong to the same project.
-- Task status changes must follow the required workflow.
-- A task cannot be marked DONE while a blocking task is unfinished.
-- Managers have additional project/task permissions.
-- Deleted tasks use soft deletion.
-
-## Database Flow
-
-```text
-React Frontend
-      ↓
-Express Backend
-      ↓
-Prisma
-      ↓
-PostgreSQL
-      ↓
-Supabase
-```
-
-## Production Database
-
-- **Production database:** PostgreSQL hosted on Supabase
-- **Schema changes:** Managed using Prisma migrations
-- **Seed/demo data:** Managed using `prisma/seed.js`
+1. **Task List Filtering & Search:**
+   - At millions of tasks, `ILIKE '%query%'` across `title` and `description` will become a bottleneck.
+   - *Mitigation:* Add PostgreSQL Full-Text Search (`tsvector` index and `websearch_to_tsquery`) or Trigram indexes (`pg_trgm`).
+2. **Task History Growth:**
+   - Append-only audit logs grow linearly with every user edit.
+   - *Mitigation:* Partition `TaskHistory` by range (`createdAt` monthly/yearly) or offload historical archives.
+3. **Complex Dependency Cycle Detection:**
+   - Multi-hop dependency checks currently use recursive CTEs or depth-first searches.
+   - *Mitigation:* Cache dependency paths or limit maximum dependency chain depth per project.
